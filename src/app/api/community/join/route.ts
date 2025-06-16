@@ -3,6 +3,7 @@ import { getServerSession } from "@/lib/auth-helpers";
 import { Community } from "@/models/Community";
 import { Notification } from "@/models/Notification";
 import { User } from "@/models/User";
+import { ensureCommunityHasSubscriptionPlan } from "@/lib/community-subscription-middleware";
 
 import { dbconnect } from "@/lib/db";
 import mongoose from "mongoose";
@@ -24,7 +25,26 @@ export async function POST(req: Request) {
     const { communityId, answers } = await req.json();
     await dbconnect();
 
-    const community = await Community.findById(communityId);
+    // Resolve community slug to ObjectId if needed
+    let resolvedCommunityId: string;
+
+    if (mongoose.Types.ObjectId.isValid(communityId)) {
+      // If it's already a valid ObjectId, use it directly
+      resolvedCommunityId = communityId;
+    } else {
+      // If it's a slug, resolve it to ObjectId
+      const community = await Community.findOne({ slug: communityId }).select("_id");
+      if (!community) {
+        return NextResponse.json(
+          { error: "Community not found" },
+          { status: 404 }
+        );
+      }
+      resolvedCommunityId = community._id.toString();
+    }
+
+    // Ensure community has subscription plan (handles migration)
+    const community = await ensureCommunityHasSubscriptionPlan(resolvedCommunityId);
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },

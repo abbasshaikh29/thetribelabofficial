@@ -30,34 +30,63 @@ export default function NotificationDropdown({
 
       try {
         setLoading(true);
-        const response = await fetch("/api/notifications?limit=20"); // Use the new endpoint
+
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+        const response = await fetch("/api/notifications?limit=20", {
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        clearTimeout(timeoutId);
+
         if (response.ok) {
           const data = await response.json();
           setNotifications(data); // API returns an array directly
+        } else {
+          console.warn("Failed to fetch notifications:", response.status);
+          showNotification("Failed to load notifications", "error");
         }
       } catch (error) {
-        console.error("Error fetching notifications:", error);
-        showNotification("Failed to load notifications", "error");
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn("Notification fetch request timed out");
+          showNotification("Request timed out. Please try again.", "error");
+        } else {
+          console.error("Error fetching notifications:", error);
+          showNotification("Failed to load notifications", "error");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchNotifications();
-  }, [session, showNotification]);
+  }, [session?.user?.id, showNotification]);
 
   const handleMarkAllAsRead = async () => {
     if (!session?.user?.id || markingRead) return;
 
     try {
       setMarkingRead(true);
+
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch("/api/notifications/user", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ all: true }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         // Update local state to mark all as read
@@ -73,11 +102,17 @@ export default function NotificationDropdown({
 
         showNotification("All notifications marked as read", "success");
       } else {
-        throw new Error("Failed to mark notifications as read");
+        console.warn("Failed to mark notifications as read:", response.status);
+        showNotification("Failed to mark notifications as read", "error");
       }
     } catch (error) {
-      console.error("Error marking notifications as read:", error);
-      showNotification("Failed to mark notifications as read", "error");
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn("Mark all as read request timed out");
+        showNotification("Request timed out. Please try again.", "error");
+      } else {
+        console.error("Error marking notifications as read:", error);
+        showNotification("Failed to mark notifications as read", "error");
+      }
     } finally {
       setMarkingRead(false);
     }

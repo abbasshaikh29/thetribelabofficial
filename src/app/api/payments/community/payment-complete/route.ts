@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
 import { Community } from "@/models/Community";
+import { clearTrialState } from "@/lib/trial-service";
 import { User } from "@/models/User";
 import { ObjectId } from "mongodb";
 
@@ -58,18 +59,16 @@ export async function POST(
     community.paymentDate = new Date();
     community.transactionId = transactionId;
     community.paymentId = paymentId;
-    
-    // Reset admin trial info if it was previously activated
-    if (community.adminTrialInfo?.activated) {
-      community.adminTrialInfo.activated = false;
-    }
-    
+
     // Set subscription end date to 1 month from now
     const subscriptionEndDate = new Date();
     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
     community.subscriptionEndDate = subscriptionEndDate;
 
     await community.save();
+
+    // Clear trial state now that subscription is active
+    await clearTrialState(communityId, session.user.id);
 
     return NextResponse.json({ 
       success: true,

@@ -3,6 +3,49 @@
  */
 const nextConfig = {
   /* config options here */
+  // Memory optimization settings
+  experimental: {
+    // Reduce memory usage during development
+    turbo: {
+      memoryLimit: 6144, // 6GB limit for Turbopack
+    },
+    // Enable webpack memory optimization
+    webpackMemoryOptimizations: true,
+  },
+  // Webpack configuration for memory optimization
+  webpack: (config, { dev, isServer }) => {
+    // Memory optimization for development
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules', '**/.next'],
+      };
+    }
+
+    // Optimize memory usage
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: -10,
+            chunks: 'all',
+          },
+        },
+      },
+    };
+
+    return config;
+  },
   images: {
     remotePatterns: [
       {

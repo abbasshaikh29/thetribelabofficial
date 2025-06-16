@@ -22,8 +22,25 @@ export async function POST(request: NextRequest) {
 
     await dbconnect();
 
-    // Find the community first to check permissions
-    const community = await Community.findById(communityId);
+    // Resolve community slug to ObjectId if needed
+    let community;
+    let resolvedCommunityId: string;
+
+    if (mongoose.Types.ObjectId.isValid(communityId)) {
+      // If it's already a valid ObjectId, use it directly
+      community = await Community.findById(communityId);
+      resolvedCommunityId = communityId;
+    } else {
+      // If it's a slug, resolve it to community
+      community = await Community.findOne({ slug: communityId });
+      if (!community) {
+        return NextResponse.json(
+          { error: "Community not found" },
+          { status: 404 }
+        );
+      }
+      resolvedCommunityId = community._id.toString();
+    }
 
     if (!community) {
       return NextResponse.json(
@@ -60,13 +77,13 @@ export async function POST(request: NextRequest) {
       result = await mongoose.connection.db
         .collection("communities")
         .updateOne(
-          { _id: new mongoose.Types.ObjectId(communityId) },
+          { _id: new mongoose.Types.ObjectId(resolvedCommunityId) },
           { $set: { name: newName, slug: newSlug } }
         );
     } else {
       // Fallback to using Mongoose model
       result = await Community.updateOne(
-        { _id: communityId },
+        { _id: resolvedCommunityId },
         { $set: { name: newName, slug: newSlug } }
       );
     }
@@ -74,7 +91,7 @@ export async function POST(request: NextRequest) {
     console.log("Update result:", result);
 
     // Verify the update
-    const updatedCommunity = await Community.findById(communityId);
+    const updatedCommunity = await Community.findById(resolvedCommunityId);
     console.log("Updated community:", updatedCommunity);
 
     if (!updatedCommunity || updatedCommunity.slug !== newSlug) {

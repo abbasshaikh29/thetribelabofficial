@@ -14,18 +14,34 @@ interface MessagingPreferences {
 }
 
 interface PaymentSettings {
-  razorpayCustomerId?: string;
-  razorpayAccountId?: string; // For community admins who can receive payments
-  subscriptionId?: string;
-  subscriptionStatus?: "active" | "canceled" | "past_due" | "unpaid" | "trial";
+  subscriptionStatus?: string;
   subscriptionEndDate?: Date;
-  enablePayments?: boolean; // For community admins to enable/disable payments
-  // Trial history tracking
-  trialHistory?: {
-    hasUsedTrial: boolean;
-    trialStartDate?: Date;
+}
+
+interface CommunityAdminSubscription {
+  razorpayCustomerId?: string;
+  // Community admin subscription management
+  adminSubscriptions: Array<{
+    communityId: mongoose.Types.ObjectId;
+    subscriptionId: string; // Razorpay subscription ID
+    subscriptionStatus: "trial" | "active" | "past_due" | "cancelled" | "expired";
+    planId: mongoose.Types.ObjectId;
+    subscriptionStartDate: Date;
+    subscriptionEndDate: Date;
     trialEndDate?: Date;
-    trialUsedAt?: Date;
+    retryAttempts: number;
+    lastRetryDate?: Date;
+    nextRetryDate?: Date;
+    isActive: boolean;
+  }>;
+  // Payment failure tracking
+  totalFailedPayments: number;
+  lastPaymentFailure?: Date;
+  // Billing notifications
+  notificationPreferences: {
+    renewalReminders: boolean;
+    paymentFailures: boolean;
+    trialExpiry: boolean;
   };
 }
 
@@ -47,6 +63,7 @@ export interface IUser {
   notificationSettings?: NotificationSettings;
   messagingPreferences?: MessagingPreferences;
   paymentSettings?: PaymentSettings;
+  communityAdminSubscription?: CommunityAdminSubscription;
   community: mongoose.Types.ObjectId[];
   followedBy: mongoose.Types.ObjectId[];
   following: mongoose.Types.ObjectId[];
@@ -55,6 +72,11 @@ export interface IUser {
   verificationToken?: string;
   verificationTokenExpiry?: Date;
   role?: "user" | "admin" | "platform_admin";
+  // Gamification fields
+  points?: number;
+  level?: number;
+  monthlyPoints?: number; // Points earned in current month
+  lastPointsReset?: Date; // Last time monthly points were reset
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -82,23 +104,40 @@ const userSchema = new mongoose.Schema<IUser>(
       allowDirectMessages: { type: Boolean, default: true },
       blockedCommunities: [{ type: String }],
     },
-    paymentSettings: {
+    communityAdminSubscription: {
       razorpayCustomerId: { type: String },
-      razorpayAccountId: { type: String },
-      subscriptionId: { type: String },
-      subscriptionStatus: {
-        type: String,
-        enum: ["active", "canceled", "past_due", "unpaid", "trial"],
-      },
-      subscriptionEndDate: { type: Date },
-      enablePayments: { type: Boolean, default: false },
-      // Trial history tracking
-      trialHistory: {
-        hasUsedTrial: { type: Boolean, default: false },
-        trialStartDate: { type: Date },
+      adminSubscriptions: [{
+        communityId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Community",
+          required: true
+        },
+        subscriptionId: { type: String, required: true },
+        subscriptionStatus: {
+          type: String,
+          enum: ["trial", "active", "past_due", "cancelled", "expired"],
+          default: "trial"
+        },
+        planId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CommunitySubscriptionPlan",
+          required: true
+        },
+        subscriptionStartDate: { type: Date, default: Date.now },
+        subscriptionEndDate: { type: Date },
         trialEndDate: { type: Date },
-        trialUsedAt: { type: Date },
-      },
+        retryAttempts: { type: Number, default: 0 },
+        lastRetryDate: { type: Date },
+        nextRetryDate: { type: Date },
+        isActive: { type: Boolean, default: true }
+      }],
+      totalFailedPayments: { type: Number, default: 0 },
+      lastPaymentFailure: { type: Date },
+      notificationPreferences: {
+        renewalReminders: { type: Boolean, default: true },
+        paymentFailures: { type: Boolean, default: true },
+        trialExpiry: { type: Boolean, default: true }
+      }
     },
     community: [{ type: Schema.Types.ObjectId, ref: "Community" }],
     followedBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
@@ -112,6 +151,11 @@ const userSchema = new mongoose.Schema<IUser>(
       enum: ["user", "admin", "platform_admin"],
       default: "user",
     },
+    // Gamification fields
+    points: { type: Number, default: 0 },
+    level: { type: Number, default: 1 },
+    monthlyPoints: { type: Number, default: 0 },
+    lastPointsReset: { type: Date, default: Date.now },
   },
   {
     timestamps: true,
@@ -120,15 +164,15 @@ const userSchema = new mongoose.Schema<IUser>(
 
 userSchema.pre("save", async function (next) {
   if (this.isModified("username")) {
-    this.slug = slugify(this.username, { lower: true, strict: true });
+    (this as any).slug = slugify((this as any).username, { lower: true, strict: true });
   }
   next();
 });
 
 userSchema.pre("save", async function (next) {
-  if (this.isModified("password") && this.password) {
-    if (!this.password.startsWith("$2b$")) {
-      this.password = await bcrypt.hash(this.password, 10);
+  if (this.isModified("password") && (this as any).password) {
+    if (!(this as any).password.startsWith("$2b$")) {
+      (this as any).password = await bcrypt.hash((this as any).password, 10);
     }
   }
   next();

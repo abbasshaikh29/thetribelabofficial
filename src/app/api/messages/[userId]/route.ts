@@ -71,6 +71,24 @@ export async function POST(
   context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    // 1. Method validation
+    if (request.method !== 'POST') {
+      return NextResponse.json(
+        { error: "Method not allowed" },
+        { status: 405, headers: { Allow: 'POST' } }
+      );
+    }
+
+    // 2. Content length validation
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 1024 * 1024) { // 1MB limit
+      return NextResponse.json(
+        { error: "Request too large" },
+        { status: 413 }
+      );
+    }
+
+    // 3. Authentication
     const session = await getServerSession();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -78,11 +96,42 @@ export async function POST(
 
     await dbconnect();
     const params = await context.params;
-    const { content, isImage = false } = await request.json();
 
-    if (!content) {
+    // 4. Parameter validation
+    if (!params.userId || !/^[0-9a-fA-F]{24}$/.test(params.userId)) {
+      return NextResponse.json(
+        { error: "Invalid user ID format" },
+        { status: 400 }
+      );
+    }
+
+    // 5. Input validation and sanitization
+    const body = await request.json();
+    const { content, isImage = false } = body;
+
+    if (!content || typeof content !== 'string') {
       return NextResponse.json(
         { error: "Message content is required" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize and validate content
+    const sanitizedContent = content
+      .replace(/[<>]/g, '') // Remove angle brackets
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .trim();
+
+    if (sanitizedContent.length === 0) {
+      return NextResponse.json(
+        { error: "Message content cannot be empty" },
+        { status: 400 }
+      );
+    }
+
+    if (sanitizedContent.length > 5000) {
+      return NextResponse.json(
+        { error: "Message content too long (max 5000 characters)" },
         { status: 400 }
       );
     }
@@ -90,12 +139,21 @@ export async function POST(
     const senderId = new mongoose.Types.ObjectId(session.user.id);
     const receiverId = new mongoose.Types.ObjectId(params.userId);
 
-    // Create the message
+    // 6. Verify receiver exists
+    const receiverExists = await User.findById(receiverId).select('_id');
+    if (!receiverExists) {
+      return NextResponse.json(
+        { error: "Recipient not found" },
+        { status: 404 }
+      );
+    }
+
+    // 7. Create the message with sanitized content
     let message = await Message.create({
       senderId,
       receiverId,
-      content,
-      isImage,
+      content: sanitizedContent,
+      isImage: Boolean(isImage),
       read: false,
     });
 

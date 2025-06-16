@@ -326,7 +326,19 @@ export default function LessonView() {
                 {lesson.content && (
                   <div
                     className="prose max-w-none mb-6"
-                    dangerouslySetInnerHTML={{ __html: lesson.content }}
+                    dangerouslySetInnerHTML={{
+                      __html: typeof window !== 'undefined'
+                        ? require('dompurify').sanitize(lesson.content, {
+                            ALLOWED_TAGS: [
+                              'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                              'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'code', 'pre'
+                            ],
+                            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel'],
+                            FORBID_SCRIPT: true,
+                            FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'iframe']
+                          })
+                        : lesson.content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                    }}
                   />
                 )}
 

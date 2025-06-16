@@ -849,12 +849,23 @@ export default function PostCard({
                 name={authorName}
                 size="md"
                 className="flex-shrink-0"
+                showLevelBadge={true}
+                userId={post.authorId || post.createdBy.toString()}
+                communityId={post.communityId.toString()}
               />
               <div>
                 {(() => {
                   if (post.createdBy) {
                     return (
-                      <UserHoverCard userId={post.createdBy.toString()} username={authorName} profileImage={post.authorProfileImage} bio={post.authorBio} onChatClick={handleChatClick}>
+                      <UserHoverCard
+                        userId={post.createdBy.toString()}
+                        username={authorName}
+                        profileImage={post.authorProfileImage}
+                        bio={post.authorBio}
+                        onChatClick={handleChatClick}
+                        communityId={post.communityId.toString()}
+                        showGamification={true}
+                      >
                         {authorName}
                       </UserHoverCard>
                     );
@@ -1020,12 +1031,23 @@ export default function PostCard({
                 name={authorName}
                 size="md"
                 className="flex-shrink-0"
+                showLevelBadge={true}
+                userId={post.authorId || post.createdBy.toString()}
+                communityId={post.communityId.toString()}
               />
               <div>
                 {(() => {
                   if (post.createdBy) {
                     return (
-                      <UserHoverCard userId={post.createdBy.toString()} username={authorName} profileImage={post.authorProfileImage} bio={post.authorBio} onChatClick={handleChatClick}>
+                      <UserHoverCard
+                        userId={post.createdBy.toString()}
+                        username={authorName}
+                        profileImage={post.authorProfileImage}
+                        bio={post.authorBio}
+                        onChatClick={handleChatClick}
+                        communityId={post.communityId.toString()}
+                        showGamification={true}
+                      >
                         {authorName}
                       </UserHoverCard>
                     );
@@ -1194,16 +1216,21 @@ export default function PostCard({
                     <div className="flex flex-col space-y-1">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-2">
-                          <ProfileAvatar 
-                            imageUrl={comment.profileImage} 
-                            name={comment.authorName} 
-                            size="sm" 
+                          <ProfileAvatar
+                            imageUrl={comment.profileImage}
+                            name={comment.authorName}
+                            size="sm"
+                            showLevelBadge={true}
+                            userId={comment.author.toString()}
+                            communityId={post.communityId.toString()}
                           />
-                          <UserHoverCard 
-                            userId={comment.author.toString()} 
-                            username={comment.authorName} 
+                          <UserHoverCard
+                            userId={comment.author.toString()}
+                            username={comment.authorName}
                             profileImage={comment.profileImage}
                             onChatClick={handleChatClick}
+                            communityId={post.communityId.toString()}
+                            showGamification={true}
                           >
                             <p className="font-semibold text-sm">
                               {comment.authorName} •{" "}

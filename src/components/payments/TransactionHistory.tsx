@@ -11,7 +11,7 @@ interface Transaction {
   amount: number;
   currency: string;
   status: "created" | "authorized" | "captured" | "refunded" | "failed";
-  paymentType: "platform" | "community";
+  paymentType: "platform" | "community" | "community_subscription";
   payerId: string;
   payeeId?: string;
   communityId?: {
@@ -36,7 +36,7 @@ interface PaginationInfo {
 
 interface TransactionHistoryProps {
   type?: "payer" | "payee";
-  paymentType?: "platform" | "community";
+  paymentType?: "platform" | "community" | "community_subscription";
   communityId?: string;
   limit?: number;
 }
@@ -200,6 +200,8 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                     <span className="font-medium">
                       {transaction.paymentType === "platform"
                         ? "Platform Payment"
+                        : transaction.paymentType === "community_subscription"
+                        ? "Community Subscription"
                         : "Community Payment"}
                     </span>
                   )}

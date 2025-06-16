@@ -5,7 +5,7 @@ import AdminPanelSettingsComponent from "@/components/communitycommponets/AdminP
 import UserCommunitySettingsComponent from "@/components/communitycommponets/UserCommunitySettings";
 import CommunityAboutMediaManagerComponent from "@/components/communitycommponets/CommunityAboutMediaManager";
 import CommunityAccessSettingsComponent from "@/components/communitycommponets/CommunityAccessSettings";
-import CommunityBillingInfoComponent from "@/components/communitycommponets/CommunityBillingInfo";
+
 import AnalyticsDashboard from "@/components/communitycommponets/AnalyticsDashboard";
 import React, { useState, useEffect } from "react";
 import dynamic from 'next/dynamic';
@@ -22,9 +22,7 @@ const CommunityAboutMediaManager = dynamic(() => import('@/components/communityc
 const CommunityAccessSettings = dynamic(() => import('@/components/communitycommponets/CommunityAccessSettings'), {
   loading: () => <div className="flex justify-center items-center min-h-[200px]"><span className="loading loading-spinner loading-md"></span></div>,
 });
-const CommunityBillingInfo = dynamic(() => import('@/components/communitycommponets/CommunityBillingInfo'), {
-  loading: () => <div className="flex justify-center items-center min-h-[200px]"><span className="loading loading-spinner loading-md"></span></div>,
-});
+
 const AdminPanelSettings = dynamic(() => import('@/components/communitycommponets/AdminPanelSettings'), {
   loading: () => <div className="flex justify-center items-center min-h-[200px]"><span className="loading loading-spinner loading-md"></span></div>,
 });
@@ -42,34 +40,65 @@ function CommunitySettingPage() {
   const [isSubAdmin, setIsSubAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Debug logging for slug parameter
+  useEffect(() => {
+    console.log('CommunitySettingPage: Component initialized with slug:', slug);
+    console.log('CommunitySettingPage: Session:', session?.user?.id);
+  }, [slug, session?.user?.id]);
+
   // Check if user is admin or sub-admin
   useEffect(() => {
     const checkUserRole = async () => {
-      if (session?.user) {
-        try {
-          setLoading(true);
-          const res = await fetch(`/api/community/${slug}`);
-          if (!res.ok) {
-            throw new Error("Failed to fetch community data");
-          }
-          const data = await res.json();
+      // Add validation for slug and session
+      if (!session?.user || !slug || slug === 'undefined') {
+        console.log('CommunitySettingPage: Skipping checkUserRole - missing slug or session:', { slug, userId: session?.user?.id });
+        setLoading(false);
+        return;
+      }
 
-          const userId = session.user.id;
-          setIsAdmin(data.admin === userId);
-          setIsSubAdmin(data.subAdmins?.includes(userId) || false);
-
-          setLoading(false);
-        } catch (error) {
-          console.error("Error checking user role:", error);
-          setLoading(false);
+      try {
+        console.log('CommunitySettingPage: Checking user role for slug:', slug);
+        setLoading(true);
+        const res = await fetch(`/api/community/${slug}`);
+        if (!res.ok) {
+          console.error('CommunitySettingPage: Failed to fetch community data:', res.status, res.statusText);
+          throw new Error("Failed to fetch community data");
         }
+        const data = await res.json();
+
+        const userId = session.user.id;
+        setIsAdmin(data.admin === userId);
+        setIsSubAdmin(data.subAdmins?.includes(userId) || false);
+
+        console.log('CommunitySettingPage: User role check completed:', { isAdmin: data.admin === userId, isSubAdmin: data.subAdmins?.includes(userId) });
+        setLoading(false);
+      } catch (error) {
+        console.error("CommunitySettingPage: Error checking user role:", error);
+        setLoading(false);
       }
     };
 
-    if (session?.user) {
+    if (session?.user && slug && slug !== 'undefined') {
       checkUserRole();
+    } else {
+      setLoading(false);
     }
   }, [session, slug]);
+
+  // Don't render if slug is invalid
+  if (!slug || slug === 'undefined') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Invalid Community</h1>
+          <p className="text-gray-600 mb-4">The community URL is invalid or missing.</p>
+          <Link href="/community-feed" className="btn btn-primary">
+            Browse Communities
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -127,12 +156,15 @@ function CommunitySettingPage() {
                 >
                   Analytics
                 </Link>
-                <Link
-                  href={`/community/${slug}/payment-settings`}
-                  className="py-3 font-semibold px-6 w-full text-lg transition-colors duration-200 rounded-lg hover:bg-base-100"
-                >
-                  Payment Settings
-                </Link>
+                {/* Only render Payment Settings link if slug is valid */}
+                {slug && slug !== 'undefined' && (
+                  <Link
+                    href={`/community/${slug}/payment-settings`}
+                    className="py-3 font-semibold px-6 w-full text-lg transition-colors duration-200 rounded-lg hover:bg-base-100"
+                  >
+                    Payment Settings
+                  </Link>
+                )}
                 {isAdmin && (
                   <Link
                     href="?t=AccessSettings"
@@ -146,19 +178,7 @@ function CommunitySettingPage() {
                     Access & Pricing
                   </Link>
                 )}
-                {isAdmin && (
-                  <Link
-                    href="?t=Billing"
-                    className={
-                      "py-3 font-semibold px-6 w-full text-lg transition-colors duration-200 rounded-lg hover:bg-base-100 " +
-                      (t === "Billing"
-                        ? "bg-primary text-primary-content "
-                        : "")
-                    }
-                  >
-                    Billing & Trial
-                  </Link>
-                )}
+
                 {/* Admin only link */}
                 {isAdmin && (
                   <Link
@@ -208,10 +228,7 @@ function CommunitySettingPage() {
                 {isAdmin && t === "AccessSettings" && (
                   <CommunityAccessSettings />
                 )}
-                {/* Billing & Trial information */}
-                {isAdmin && t === "Billing" && (
-                  <CommunityBillingInfo />
-                )}
+
                 {/* Payment settings moved to dedicated page */}
                 {isAdmin && t === "AdminPanel" && <AdminPanelSettings />}
                 {!t && <UserCommunitySettings />}

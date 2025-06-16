@@ -8,7 +8,7 @@ export interface ITransaction {
   amount: number;
   currency: string;
   status: "created" | "authorized" | "captured" | "refunded" | "failed";
-  paymentType: "platform" | "community";
+  paymentType: "platform" | "community" | "community_subscription";
   payerId: string; // User who made the payment
   payeeId?: string; // Community admin who received the payment (for community payments)
   communityId?: mongoose.Types.ObjectId; // Related community (for community payments)
@@ -34,7 +34,7 @@ const transactionSchema = new Schema<ITransaction>(
     paymentType: {
       type: String,
       required: true,
-      enum: ["platform", "community"],
+      enum: ["platform", "community", "community_subscription"],
     },
     payerId: {
       type: String,

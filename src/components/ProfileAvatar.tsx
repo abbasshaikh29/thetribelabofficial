@@ -6,6 +6,7 @@ import Image from "next/image";
 import { addCacheBusting, preloadImage } from "@/utils/crossBrowserImageUtils";
 import { convertS3UrlToR2, isR2Url, isS3Url } from "@/utils/s3-to-r2-migration";
 import styles from "./ProfileAvatar.module.css";
+import LevelBadge from "./gamification/LevelBadge";
 
 // Helper function to get initials from name or email
 const getInitials = (name?: string, email?: string): string => {
@@ -35,6 +36,12 @@ interface ProfileAvatarProps {
   email?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  // Gamification props
+  showLevelBadge?: boolean;
+  userLevel?: number;
+  levelName?: string;
+  userId?: string;
+  communityId?: string;
 }
 
 export default function ProfileAvatar({
@@ -43,11 +50,17 @@ export default function ProfileAvatar({
   email,
   size = "md",
   className = "",
+  showLevelBadge = false,
+  userLevel,
+  levelName,
+  userId,
+  communityId,
 }: ProfileAvatarProps) {
   // All hooks must be called at the top level, before any conditional returns
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(!!imageUrl);
   const [userProfileData, setUserProfileData] = useState<any>(null);
+  const [gamificationData, setGamificationData] = useState<any>(null);
 
   // For Google images, we need a unique ID - create it unconditionally
   const [avatarId] = useState(`google-avatar-${Date.now()}`);
@@ -80,6 +93,26 @@ export default function ProfileAvatar({
       fetchUserProfile();
     }
   }, [imageUrl]);
+
+  // Fetch gamification data if needed
+  useEffect(() => {
+    if (showLevelBadge && userId && !userLevel) {
+      const fetchGamificationData = async () => {
+        try {
+          const url = `/api/gamification/user/${userId}${communityId ? `?communityId=${communityId}` : ''}`;
+          const response = await fetch(url);
+          if (response.ok) {
+            const data = await response.json();
+            setGamificationData(data);
+          }
+        } catch (error) {
+          // Silent error handling
+        }
+      };
+
+      fetchGamificationData();
+    }
+  }, [showLevelBadge, userId, userLevel, communityId]);
 
   // Use the fetched profile image if available
   const effectiveImageUrl =
@@ -163,14 +196,47 @@ export default function ProfileAvatar({
     setIsLoading(false);
   };
 
+  // Get effective level data
+  const effectiveLevel = userLevel || gamificationData?.currentLevel?.level;
+  const effectiveLevelName = levelName || gamificationData?.currentLevel?.name;
+
   // Render the fallback avatar with the first letter
   const renderFallback = () => (
-    <div
-      className={`${styles.avatar} ${sizeClasses[size]} ${styles.fallback} ${className}`}
-    >
-      <span className={styles.fallbackText}>{firstLetter.toUpperCase()}</span>
+    <div className="relative inline-block">
+      <div
+        className={`${styles.avatar} ${sizeClasses[size]} ${styles.fallback} ${className}`}
+      >
+        <span className={styles.fallbackText}>{firstLetter.toUpperCase()}</span>
+      </div>
+      {showLevelBadge && effectiveLevel && (
+        <LevelBadge
+          level={effectiveLevel}
+          levelName={effectiveLevelName}
+          size={size === "lg" ? "md" : "sm"}
+          position="bottom-right"
+        />
+      )}
     </div>
   );
+
+  // Wrapper function to add level badge to any avatar
+  const wrapWithLevelBadge = (avatarElement: React.ReactNode) => {
+    if (!showLevelBadge || !effectiveLevel) {
+      return avatarElement;
+    }
+
+    return (
+      <div className="relative inline-block">
+        {avatarElement}
+        <LevelBadge
+          level={effectiveLevel}
+          levelName={effectiveLevelName}
+          size={size === "lg" ? "md" : "sm"}
+          position="bottom-right"
+        />
+      </div>
+    );
+  };
 
   // If there's no image or there was an error loading it, show fallback
   if ((!effectiveImageUrl && !userProfileData) || imageError) {
@@ -179,7 +245,7 @@ export default function ProfileAvatar({
 
   // For Google images, use a simple div with background image
   if (isGoogleImage) {
-    return (
+    return wrapWithLevelBadge(
       <div
         className={`${styles.avatar} ${sizeClasses[size]} ${styles.googleAvatar} ${avatarId} ${className}`}
       />
@@ -193,7 +259,7 @@ export default function ProfileAvatar({
 
     if (isR2Image) {
       // Use a regular img tag for R2 images to avoid Next.js Image optimization issues
-      return (
+      return wrapWithLevelBadge(
         <div
           className={`${styles.avatar} ${sizeClasses[size]} ${className} overflow-hidden relative`}
         >
@@ -213,7 +279,7 @@ export default function ProfileAvatar({
       );
     } else {
       // Use Next.js Image component for other S3 images
-      return (
+      return wrapWithLevelBadge(
         <div
           className={`${styles.avatar} ${sizeClasses[size]} ${className} overflow-hidden relative`}
         >
@@ -257,7 +323,7 @@ export default function ProfileAvatar({
 
   // If we're still loading user profile data, show a loading indicator
   if (!effectiveImageUrl && !imageError) {
-    return (
+    return wrapWithLevelBadge(
       <div
         className={`${styles.avatar} ${sizeClasses[size]} ${styles.fallback} ${className}`}
       >
@@ -267,7 +333,7 @@ export default function ProfileAvatar({
   }
 
   // For all other images, use Next.js Image component
-  return (
+  return wrapWithLevelBadge(
     <div
       className={`${styles.avatar} ${sizeClasses[size]} ${className} relative`}
     >

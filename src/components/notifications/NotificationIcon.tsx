@@ -21,29 +21,57 @@ export default function NotificationIcon() {
     if (!session?.user?.id) return;
 
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch(
-        "/api/notifications?unread=true" // Use new endpoint
+        "/api/notifications?unread=true", // Use new endpoint
+        {
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
       );
+
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const data = await response.json();
         setUnreadCount(data.length); // API returns an array, count its length
+      } else {
+        console.warn("Failed to fetch notifications:", response.status);
       }
     } catch (error) {
-      console.error("Error fetching unread notifications count:", error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn("Notification fetch request timed out");
+      } else {
+        console.error("Error fetching unread notifications count:", error);
+      }
     }
   };
 
   // Set up fetching of unread counts
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchUnreadCount();
+    if (!session?.user?.id) return;
 
-      // Set up interval to check for new notifications
-      const intervalId = setInterval(fetchUnreadCount, 60000); // Check every 60 seconds (reduced from 30 seconds since we have real-time updates)
+    // Initial fetch
+    fetchUnreadCount();
 
-      return () => clearInterval(intervalId);
-    }
-  }, [session]);
+    // Set up interval to check for new notifications
+    const intervalId = setInterval(() => {
+      try {
+        fetchUnreadCount();
+      } catch (error) {
+        console.error("Error in notification interval:", error);
+      }
+    }, 60000); // Check every 60 seconds (reduced from 30 seconds since we have real-time updates)
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [session?.user?.id]);
 
   // Set up real-time notification listener
   useEffect(() => {
@@ -51,30 +79,50 @@ export default function NotificationIcon() {
       return;
     }
 
-    // Listen for new notifications
-    const notificationCleanup = listenForRealtimeEvents(
-      "notification-created",
-      (data: any) => {
+    let cleanupFunction: (() => void) | null = null;
 
-        // Only process if it's for this user
-        if (data.userId === session.user.id) {
-          // Increment the unread count
-          setUnreadCount((prevCount) => prevCount + 1);
+    try {
+      // Listen for new notifications
+      cleanupFunction = listenForRealtimeEvents(
+        "notification-created",
+        (data: any) => {
+          try {
+            // Only process if it's for this user
+            if (data?.userId === session?.user?.id) {
+              // Increment the unread count
+              setUnreadCount((prevCount) => prevCount + 1);
 
-          // Show a toast notification
-          showNotification(
-            `New notification: ${data.notification.title}`,
-            "info"
-          );
+              // Show a toast notification
+              if (data?.notification?.title) {
+                showNotification(
+                  `New notification: ${data.notification.title}`,
+                  "info"
+                );
+              }
 
-          // Refresh the notification count to ensure accuracy
-          fetchUnreadCount();
+              // Refresh the notification count to ensure accuracy
+              // Use a small delay to prevent rapid successive calls
+              setTimeout(() => {
+                fetchUnreadCount();
+              }, 500);
+            }
+          } catch (error) {
+            console.error("Error processing realtime notification:", error);
+          }
         }
-      }
-    );
+      );
+    } catch (error) {
+      console.error("Error setting up realtime listener:", error);
+    }
 
     return () => {
-      notificationCleanup();
+      if (cleanupFunction) {
+        try {
+          cleanupFunction();
+        } catch (error) {
+          console.error("Error cleaning up realtime listener:", error);
+        }
+      }
     };
   }, [isEnabled, session?.user?.id, showNotification]);
 
@@ -96,11 +144,15 @@ export default function NotificationIcon() {
   }, []);
 
   const toggleDropdown = () => {
-    if (!session) {
-      showNotification("Please sign in to view notifications", "info");
-      return;
+    try {
+      if (!session) {
+        showNotification("Please sign in to view notifications", "info");
+        return;
+      }
+      setIsOpen(!isOpen);
+    } catch (error) {
+      console.error("Error toggling notification dropdown:", error);
     }
-    setIsOpen(!isOpen);
   };
 
   return (

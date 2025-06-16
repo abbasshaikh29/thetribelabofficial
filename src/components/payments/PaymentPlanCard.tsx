@@ -3,6 +3,7 @@
 import React from "react";
 import { Check } from "lucide-react";
 import RazorpayCheckout from "./RazorpayCheckout";
+import PayNowButton from "./PayNowButton";
 
 interface PaymentPlanProps {
   plan: {
@@ -105,16 +106,29 @@ const PaymentPlanCard: React.FC<PaymentPlanProps> = ({
         )}
         
         <div className="card-actions mt-auto">
-          <RazorpayCheckout
-            amount={plan.amount}
-            currency={plan.currency}
-            planId={plan._id}
-            paymentType={plan.planType}
-            communityId={plan.communityId}
-            buttonText="Subscribe Now"
-            onSuccess={onSuccess}
-            onError={onError}
-          />
+          {plan.planType === "community" ? (
+            <PayNowButton
+              communityId={plan.communityId}
+              buttonText={`Subscribe Now - ${formatCurrency(plan.amount, plan.currency)}${formatInterval(plan.interval, plan.intervalCount)}`}
+              variant="primary"
+              size="lg"
+              showFeatures={true}
+              context="billing"
+              onSuccess={onSuccess}
+              onError={onError}
+            />
+          ) : (
+            <RazorpayCheckout
+              amount={plan.amount}
+              currency={plan.currency}
+              planId={plan._id}
+              paymentType={plan.planType}
+              communityId={plan.communityId}
+              buttonText="Subscribe Now"
+              onSuccess={onSuccess}
+              onError={onError}
+            />
+          )}
         </div>
       </div>
     </div>

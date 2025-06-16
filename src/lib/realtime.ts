@@ -70,16 +70,29 @@ export function listenForRealtimeEvents(
   }
 
   const handleMessage = (event: MessageEvent<RealtimeEvent>) => {
-    if (event.data && event.data.type === eventType) {
-      callback(event.data.data);
+    try {
+      if (event.data && event.data.type === eventType) {
+        callback(event.data.data);
+      }
+    } catch (error) {
+      console.error(`Error handling realtime event ${eventType}:`, error);
     }
   };
 
-  channel.addEventListener("message", handleMessage);
+  try {
+    channel.addEventListener("message", handleMessage);
+  } catch (error) {
+    console.error(`Error adding event listener for ${eventType}:`, error);
+    return () => {}; // Return empty cleanup function
+  }
 
   // Return a cleanup function
   return () => {
-    channel.removeEventListener("message", handleMessage);
+    try {
+      channel.removeEventListener("message", handleMessage);
+    } catch (error) {
+      console.error(`Error removing event listener for ${eventType}:`, error);
+    }
   };
 }
 

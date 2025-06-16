@@ -261,7 +261,8 @@ export const authOptions: NextAuthConfig = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60,
+    maxAge: 8 * 60 * 60, // 8 hours instead of 24
+    updateAge: 2 * 60 * 60, // Update session every 2 hours
   },
   cookies: {
     sessionToken: {

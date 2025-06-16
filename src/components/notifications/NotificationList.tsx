@@ -64,20 +64,33 @@ export default function NotificationList({
 
   const markAsRead = async (notificationId: string) => {
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for individual notifications
+
       const response = await fetch("/api/notifications/user", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ notificationIds: [notificationId] }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         // Update the unread count
         onMarkAllRead();
+      } else {
+        console.warn("Failed to mark notification as read:", response.status);
       }
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn("Mark as read request timed out for notification:", notificationId);
+      } else {
+        console.error("Error marking notification as read:", error);
+      }
     }
   };
 

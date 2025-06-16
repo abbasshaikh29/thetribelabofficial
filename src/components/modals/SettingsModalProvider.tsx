@@ -7,6 +7,7 @@ import CommunitySettingsModal from "./CommunitySettingsModal";
 interface SettingsModalContextType {
   openUserSettings: (initialTab?: string) => void;
   openCommunitySettings: (slug?: string, initialTab?: string) => void;
+  openSettingsModal: (tab?: string, slug?: string) => void; // Unified method
   closeModals: () => void;
   isUserSettingsOpen: boolean;
   isCommunitySettingsOpen: boolean;
@@ -48,6 +49,17 @@ export default function SettingsModalProvider({ children }: SettingsModalProvide
     setIsUserSettingsOpen(false);
   };
 
+  // Unified method for opening settings modals
+  const openSettingsModal = (tab = "UserSettings", slug?: string) => {
+    if (slug) {
+      // Open community settings
+      openCommunitySettings(slug, tab);
+    } else {
+      // Open user settings
+      openUserSettings(tab);
+    }
+  };
+
   const closeModals = () => {
     setIsUserSettingsOpen(false);
     setIsCommunitySettingsOpen(false);
@@ -56,6 +68,7 @@ export default function SettingsModalProvider({ children }: SettingsModalProvide
   const contextValue: SettingsModalContextType = {
     openUserSettings,
     openCommunitySettings,
+    openSettingsModal,
     closeModals,
     isUserSettingsOpen,
     isCommunitySettingsOpen,

@@ -24,26 +24,40 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Only initialize realtime if user is authenticated
-    if (!session?.user) return;
+    if (!session?.user) {
+      setIsEnabled(false);
+      return;
+    }
+
+    let mounted = true;
 
     try {
       // Initialize the realtime channel
       const channel = initRealtimeChannel();
-      if (channel) {
+      if (channel && mounted) {
         setIsEnabled(true);
         console.log("Realtime communication enabled");
+      } else if (mounted) {
+        setIsEnabled(false);
       }
     } catch (error) {
       console.error("Error initializing realtime:", error);
-      setIsEnabled(false);
+      if (mounted) {
+        setIsEnabled(false);
+      }
     }
 
     // Clean up on unmount
     return () => {
-      closeRealtimeChannel();
-      setIsEnabled(false);
+      mounted = false;
+      try {
+        closeRealtimeChannel();
+        setIsEnabled(false);
+      } catch (error) {
+        console.error("Error cleaning up realtime:", error);
+      }
     };
-  }, [session]);
+  }, [session?.user]);
 
   return (
     <RealtimeContext.Provider value={{ isEnabled }}>

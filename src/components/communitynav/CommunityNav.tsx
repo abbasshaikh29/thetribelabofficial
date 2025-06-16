@@ -30,6 +30,12 @@ function CommunityNav() {
   const [iconImage, setIconImage] = useState("");
   const [userCommunities, setUserCommunities] = useState<Community[]>([]);
 
+  // Debug logging for slug parameter
+  useEffect(() => {
+    console.log('CommunityNav: slug parameter changed:', slug);
+    console.log('CommunityNav: pathname:', pathname);
+  }, [slug, pathname]);
+
   // No debug logging in production
 
   // Function to check if a link is active
@@ -46,6 +52,7 @@ function CommunityNav() {
         "/Calander",
         "/about",
         "/members",
+        "/leaderboard",
         "/communitysetting",
       ].some((suffix) => pathname === `/Newcompage/${slug}${suffix}`)
     ) {
@@ -56,7 +63,14 @@ function CommunityNav() {
   };
 
   const fetchCommunity = async () => {
+    // Add validation for slug and session
+    if (!session?.user?.id || !slug || slug === 'undefined') {
+      console.log('CommunityNav: Skipping fetchCommunity - missing slug or session:', { slug, userId: session?.user?.id });
+      return;
+    }
+
     try {
+      console.log('CommunityNav: Fetching community data for slug:', slug);
       // Add a timestamp to prevent caching
       const timestamp = Date.now();
 
@@ -70,7 +84,13 @@ function CommunityNav() {
         },
       });
 
+      if (!res.ok) {
+        console.error('CommunityNav: Failed to fetch community data:', res.status, res.statusText);
+        throw new Error("Failed to fetch community data");
+      }
+
       const data = await res.json();
+      console.log('CommunityNav: Successfully fetched community data:', data.name);
       setName(data.name);
 
       // Set the icon image URL, ensuring it's a string
@@ -149,11 +169,19 @@ function CommunityNav() {
         img.src = finalIconUrl;
       }
     } catch (error) {
-      // Silent error handling
+      console.error('CommunityNav: Error fetching community data:', error);
+      // Silent error handling for UI, but log for debugging
     }
   };
 
   useEffect(() => {
+    // Only fetch if we have a valid slug and session
+    if (!slug || slug === 'undefined' || !session?.user?.id) {
+      console.log('CommunityNav: Skipping useEffect - invalid slug or no session:', { slug, userId: session?.user?.id });
+      return;
+    }
+
+    console.log('CommunityNav: useEffect triggered for slug:', slug);
     // Fetch community data when component mounts or slug changes
     fetchCommunity();
 
@@ -179,8 +207,9 @@ function CommunityNav() {
 
   useEffect(() => {
     const fetchUserCommunities = async () => {
-      if (session?.user) {
+      if (session?.user && slug && slug !== 'undefined') {
         try {
+          console.log('CommunityNav: Fetching user communities, excluding slug:', slug);
           const response = await fetch("/api/user/communities");
           if (response.ok) {
             const data = await response.json();
@@ -194,7 +223,7 @@ function CommunityNav() {
             preloadCommunityIcons(filteredCommunities);
           }
         } catch (error) {
-          // Error handling silently
+          console.error('CommunityNav: Error fetching user communities:', error);
         }
       }
     };
@@ -226,18 +255,24 @@ function CommunityNav() {
                 />
               </div>
               <div className="flex flex-col">
-                <Link
-                  href={`/Newcompage/${slug}`}
-                  className="btn btn-ghost text-sm sm:text-lg md:text-xl gap-1 sm:gap-2 normal-case font-bold p-0 h-auto min-h-0"
-                  prefetch={true}
-                  onClick={() =>
-                    showNotification("Welcome to TheTribelab", "success")
-                  }
-                >
-                  <span className="truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
-                    {Name}
+                {slug && slug !== 'undefined' ? (
+                  <Link
+                    href={`/Newcompage/${slug}`}
+                    className="btn btn-ghost text-sm sm:text-lg md:text-xl gap-1 sm:gap-2 normal-case font-bold p-0 h-auto min-h-0"
+                    prefetch={true}
+                    onClick={() =>
+                      showNotification("Welcome to TheTribelab", "success")
+                    }
+                  >
+                    <span className="truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
+                      {Name || 'Loading...'}
+                    </span>
+                  </Link>
+                ) : (
+                  <span className="text-sm sm:text-lg md:text-xl font-bold text-gray-500">
+                    {Name || 'Invalid Community'}
                   </span>
-                </Link>
+                )}
               </div>
             </div>
 
@@ -389,7 +424,7 @@ function CommunityNav() {
                           Settings
                         </button>
                       </li>
-                      {isMember && (
+                      {isMember && slug && slug !== 'undefined' && (
                         <li>
                           <button
                             type="button"
@@ -431,7 +466,7 @@ function CommunityNav() {
         </div>
 
         <div className="w-full overflow-x-auto">
-          {isMember ? (
+          {isMember && slug && slug !== 'undefined' ? (
             <>
               {/* Desktop navigation - centered on larger screens */}
               <div className="hidden md:flex gap-2 justify-center">
@@ -484,6 +519,16 @@ function CommunityNav() {
                   }`}
                 >
                   Members
+                </Link>
+                <Link
+                  href={`/Newcompage/${slug}/leaderboard`}
+                  className={`btn text-lg btn-ghost ${
+                    isLinkActive(`/Newcompage/${slug}/leaderboard`)
+                      ? "bg-primary text-primary-content"
+                      : "hover:text-primary"
+                  }`}
+                >
+                  Leaderboard
                 </Link>
               </div>
 
@@ -538,6 +583,16 @@ function CommunityNav() {
                   }`}
                 >
                   Members
+                </Link>
+                <Link
+                  href={`/Newcompage/${slug}/leaderboard`}
+                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
+                    isLinkActive(`/Newcompage/${slug}/leaderboard`)
+                      ? "bg-primary text-primary-content"
+                      : "hover:text-primary"
+                  }`}
+                >
+                  Leaderboard
                 </Link>
               </div>
             </>

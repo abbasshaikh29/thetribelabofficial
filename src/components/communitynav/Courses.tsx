@@ -55,7 +55,8 @@ function Courses() {
   return (
     <div>
       <CommunityNav />
-      {loading ? (
+      <div className="mt-6">
+        {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="loading loading-spinner loading-lg"></div>
         </div>
@@ -66,10 +67,11 @@ function Courses() {
           isAdmin={isAdmin}
         />
       ) : (
-        <div className="alert alert-error max-w-md mx-auto m-4">
-          <span>Community not found</span>
-        </div>
-      )}
+          <div className="alert alert-error max-w-md mx-auto m-4">
+            <span>Community not found</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

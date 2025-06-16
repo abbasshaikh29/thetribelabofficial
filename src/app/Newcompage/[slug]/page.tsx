@@ -2,17 +2,21 @@
 "use client";
 import mongoose from "mongoose";
 import React, { useState, useEffect, Suspense, lazy } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ICommunity } from "@/models/Community";
 import { IPost } from "@/models/Posts";
 import CommunityNav from "@/components/communitynav/CommunityNav";
 import { listenForRealtimeEvents } from "@/lib/realtime";
 import { useRealtime } from "@/components/RealtimeProvider";
+import { useNotification } from "@/components/Notification";
 
 // Dynamically import components for code splitting
 const CommunityAboutcard = lazy(
   () => import("@/components/communitycommponets/CommunityAboutcard")
+);
+const CompactLeaderboard = lazy(
+  () => import("@/components/gamification/CompactLeaderboard")
 );
 const CreatePost = lazy(() =>
   import("@/components/postcommponets/Createpost").then((mod) => ({
@@ -50,9 +54,13 @@ export default function HomeIdPage() {
       document.body.style.removeProperty("color");
     };
   }, []);
+
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const { data: session } = useSession();
+  const { showNotification } = useNotification();
   const [community, setCommunity] = useState<ICommunity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +74,32 @@ export default function HomeIdPage() {
   const [editingPost, setEditingPost] = useState<PostWithAuthor | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { isEnabled } = useRealtime();
+
+  // Check for payment success and show notification
+  useEffect(() => {
+    const subscriptionStatus = searchParams.get('subscription');
+
+    if (subscriptionStatus === 'success') {
+      showNotification('🎉 Payment successful! Your subscription is now active.', 'success');
+
+      // Clean up the URL parameter after showing notification
+      const newUrl = window.location.pathname;
+      router.replace(newUrl, { scroll: false });
+
+      // Refresh community data to reflect new subscription status
+      if (slug) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500); // Give time for notification to be seen
+      }
+    } else if (subscriptionStatus === 'activated') {
+      showNotification('✅ Free trial activated! Enjoy unlimited access to all features.', 'success');
+
+      // Clean up the URL parameter
+      const newUrl = window.location.pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [searchParams, router, slug]);
 
   // Function to fetch posts (sorted by date, newest first)
   const fetchPosts = async () => {
@@ -614,11 +648,23 @@ export default function HomeIdPage() {
               </div>
 
               {/* About card - Hidden on mobile, visible on large screens */}
-              <div className="hidden lg:block lg:w-1/3 mt-6">
+              <div className="hidden lg:block lg:w-1/3 mt-6 space-y-4">
                 <Suspense
                   fallback={<div className="skeleton h-96 w-full"></div>}
                 >
                   <CommunityAboutcard slug={slug} />
+                </Suspense>
+
+                {/* Compact Leaderboard */}
+                <Suspense
+                  fallback={<div className="skeleton h-64 w-full"></div>}
+                >
+                  <CompactLeaderboard
+                    communityId={community?._id?.toString() || ""}
+                    communitySlug={slug}
+                    period="30day"
+                    limit={5}
+                  />
                 </Suspense>
               </div>
 

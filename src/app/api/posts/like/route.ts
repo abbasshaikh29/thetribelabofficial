@@ -5,6 +5,7 @@ import { Post } from "@/models/Posts";
 import { User } from "@/models/User";
 import mongoose from "mongoose";
 import { emitToRoom } from "@/lib/socket";
+import { awardPoints } from "@/lib/gamification";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update likes based on action
+    let pointsAwarded = 0;
     if (action === "like") {
       // Check if user already liked the post
       const alreadyLiked = post.likes.some(
@@ -54,12 +56,44 @@ export async function POST(request: NextRequest) {
 
       if (!alreadyLiked) {
         post.likes.push(userId);
+
+        // Award 1 point to the post author for receiving a like
+        try {
+          const result = await awardPoints(
+            post.createdBy.toString(),
+            1,
+            post.communityId.toString()
+          );
+          pointsAwarded = result.pointsAwarded;
+        } catch (error) {
+          console.error("Error awarding points:", error);
+          // Continue even if point awarding fails
+        }
       }
     } else {
       // Unlike: Remove user ID from likes array
+      const wasLiked = post.likes.some(
+        (id: mongoose.Types.ObjectId) => id.toString() === userId.toString()
+      );
+
       post.likes = post.likes.filter(
         (id: mongoose.Types.ObjectId) => id.toString() !== userId.toString()
       );
+
+      // Remove 1 point from the post author for losing a like
+      if (wasLiked) {
+        try {
+          await awardPoints(
+            post.createdBy.toString(),
+            -1,
+            post.communityId.toString()
+          );
+          pointsAwarded = -1;
+        } catch (error) {
+          console.error("Error removing points:", error);
+          // Continue even if point removal fails
+        }
+      }
     }
 
     await post.save();

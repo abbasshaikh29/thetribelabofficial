@@ -3,6 +3,7 @@ import { getServerSession } from "@/lib/auth-helpers";
 import { Community } from "@/models/Community";
 
 import { dbconnect } from "@/lib/db";
+import mongoose from "mongoose";
 
 // GET all pending requests for a community
 export async function GET(req: Request) {
@@ -23,7 +24,17 @@ export async function GET(req: Request) {
     }
     await dbconnect();
 
-    const community = await Community.findById(communityId);
+    // Resolve community slug to ObjectId if needed
+    let community;
+
+    if (mongoose.Types.ObjectId.isValid(communityId)) {
+      // If it's already a valid ObjectId, use it directly
+      community = await Community.findById(communityId);
+    } else {
+      // If it's a slug, resolve it to community
+      community = await Community.findOne({ slug: communityId });
+    }
+
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },
@@ -70,7 +81,17 @@ export async function POST(req: Request) {
 
     await dbconnect();
 
-    const community = await Community.findById(communityId);
+    // Resolve community slug to ObjectId if needed
+    let community;
+
+    if (mongoose.Types.ObjectId.isValid(communityId)) {
+      // If it's already a valid ObjectId, use it directly
+      community = await Community.findById(communityId);
+    } else {
+      // If it's a slug, resolve it to community
+      community = await Community.findOne({ slug: communityId });
+    }
+
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },

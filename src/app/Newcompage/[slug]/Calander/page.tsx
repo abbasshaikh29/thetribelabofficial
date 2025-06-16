@@ -1,6 +1,7 @@
 "use client";
 
 import Calander from "@/components/communitynav/Calander";
+import CommunityNav from "@/components/communitynav/CommunityNav";
 import React, { useEffect } from "react";
 
 function CalendarPage() {
@@ -19,7 +20,10 @@ function CalendarPage() {
 
   return (
     <div className="calander-page" style={{ backgroundColor: "var(--bg-primary)" }}>
-      <Calander />
+      <CommunityNav />
+      <div className="mt-6">
+        <Calander />
+      </div>
     </div>
   );
 }

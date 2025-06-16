@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
-import { PaymentPlan } from "@/models/PaymentPlan";
+import { CommunitySubscriptionPlan } from "@/models/PaymentPlan";
 import { Community } from "@/models/Community";
 import mongoose from "mongoose";
 
-// GET /api/payments/plans/[id] - Get a specific payment plan
+// GET /api/payments/plans/[id] - Get a specific community subscription plan
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -13,26 +13,26 @@ export async function GET(
   try {
     await dbconnect();
     const params = await context.params;
-    const plan = await PaymentPlan.findById(params.id);
+    const plan = await CommunitySubscriptionPlan.findById(params.id);
 
     if (!plan) {
       return NextResponse.json(
-        { error: "Payment plan not found" },
+        { error: "Community subscription plan not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(plan);
   } catch (error) {
-    console.error("Error fetching payment plan:", error);
+    console.error("Error fetching community subscription plan:", error);
     return NextResponse.json(
-      { error: "Failed to fetch payment plan" },
+      { error: "Failed to fetch community subscription plan" },
       { status: 500 }
     );
   }
 }
 
-// PUT /api/payments/plans/[id] - Update a payment plan
+// PUT /api/payments/plans/[id] - Update a community subscription plan
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -45,36 +45,23 @@ export async function PUT(
 
     await dbconnect();
     const params = await context.params;
-    const plan = await PaymentPlan.findById(params.id);
+    const plan = await CommunitySubscriptionPlan.findById(params.id);
 
     if (!plan) {
       return NextResponse.json(
-        { error: "Payment plan not found" },
+        { error: "Community subscription plan not found" },
         { status: 404 }
       );
     }
 
-    // Check permissions
-    if (plan.planType === "community") {
-      // For community plans, verify the user is the community admin
-      if (plan.communityId) {
-        const community = await Community.findById(plan.communityId);
-        if (!community || community.admin !== session.user.id) {
-          return NextResponse.json(
-            { error: "Only community admins can update their payment plans" },
-            { status: 403 }
-          );
-        }
-      }
-    } else if (plan.planType === "platform") {
-      // For platform plans, verify the user is a platform admin
-      const user = await mongoose.model("User").findById(session.user.id);
-      if (!user || user.role !== "platform_admin") {
-        return NextResponse.json(
-          { error: "Only platform admins can update platform plans" },
-          { status: 403 }
-        );
-      }
+    // For now, only allow platform admins to update subscription plans
+    // You can implement more granular permissions as needed
+    const user = await mongoose.model("User").findById(session.user.id);
+    if (!user || user.role !== "platform_admin") {
+      return NextResponse.json(
+        { error: "Only platform admins can update subscription plans" },
+        { status: 403 }
+      );
     }
 
     // Get update data
@@ -88,6 +75,14 @@ export async function PUT(
       trialPeriodDays,
       features,
       isActive,
+      allowCustomBranding,
+      prioritySupport,
+      analyticsAccess,
+      advancedAnalytics,
+      apiAccess,
+      whitelabelOptions,
+      dedicatedSupport,
+      customIntegrations,
     } = await request.json();
 
     // Update fields
@@ -100,20 +95,28 @@ export async function PUT(
     if (trialPeriodDays !== undefined) plan.trialPeriodDays = trialPeriodDays;
     if (features !== undefined) plan.features = features;
     if (isActive !== undefined) plan.isActive = isActive;
+    if (allowCustomBranding !== undefined) plan.allowCustomBranding = allowCustomBranding;
+    if (prioritySupport !== undefined) plan.prioritySupport = prioritySupport;
+    if (analyticsAccess !== undefined) plan.analyticsAccess = analyticsAccess;
+    if (advancedAnalytics !== undefined) plan.advancedAnalytics = advancedAnalytics;
+    if (apiAccess !== undefined) plan.apiAccess = apiAccess;
+    if (whitelabelOptions !== undefined) plan.whitelabelOptions = whitelabelOptions;
+    if (dedicatedSupport !== undefined) plan.dedicatedSupport = dedicatedSupport;
+    if (customIntegrations !== undefined) plan.customIntegrations = customIntegrations;
 
     await plan.save();
 
     return NextResponse.json(plan);
   } catch (error) {
-    console.error("Error updating payment plan:", error);
+    console.error("Error updating community subscription plan:", error);
     return NextResponse.json(
-      { error: "Failed to update payment plan" },
+      { error: "Failed to update community subscription plan" },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/payments/plans/[id] - Delete a payment plan
+// DELETE /api/payments/plans/[id] - Delete a community subscription plan
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -126,52 +129,42 @@ export async function DELETE(
 
     await dbconnect();
     const params = await context.params;
-    const plan = await PaymentPlan.findById(params.id);
+    const plan = await CommunitySubscriptionPlan.findById(params.id);
 
     if (!plan) {
       return NextResponse.json(
-        { error: "Payment plan not found" },
+        { error: "Community subscription plan not found" },
         { status: 404 }
       );
     }
 
-    // Check permissions
-    if (plan.planType === "community") {
-      // For community plans, verify the user is the community admin
-      if (plan.communityId) {
-        const community = await Community.findById(plan.communityId);
-        if (!community || community.admin !== session.user.id) {
-          return NextResponse.json(
-            { error: "Only community admins can delete their payment plans" },
-            { status: 403 }
-          );
-        }
+    // For now, only allow platform admins to delete subscription plans
+    // You can implement more granular permissions as needed
+    const user = await mongoose.model("User").findById(session.user.id);
+    if (!user || user.role !== "platform_admin") {
+      return NextResponse.json(
+        { error: "Only platform admins can delete subscription plans" },
+        { status: 403 }
+      );
+    }
 
-        // Remove the plan from the community's payment plans
-        await Community.findByIdAndUpdate(
-          plan.communityId,
-          { $pull: { paymentPlans: plan._id } }
-        );
-      }
-    } else if (plan.planType === "platform") {
-      // For platform plans, verify the user is a platform admin
-      const user = await mongoose.model("User").findById(session.user.id);
-      if (!user || user.role !== "platform_admin") {
-        return NextResponse.json(
-          { error: "Only platform admins can delete platform plans" },
-          { status: 403 }
-        );
-      }
+    // Check if any communities are using this plan
+    const communitiesUsingPlan = await Community.find({ subscriptionPlanId: params.id });
+    if (communitiesUsingPlan.length > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete plan that is currently in use by communities" },
+        { status: 400 }
+      );
     }
 
     // Delete the plan
-    await PaymentPlan.findByIdAndDelete(params.id);
+    await CommunitySubscriptionPlan.findByIdAndDelete(params.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting payment plan:", error);
+    console.error("Error deleting community subscription plan:", error);
     return NextResponse.json(
-      { error: "Failed to delete payment plan" },
+      { error: "Failed to delete community subscription plan" },
       { status: 500 }
     );
   }

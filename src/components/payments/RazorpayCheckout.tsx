@@ -1,18 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-interface RazorpayCheckoutProps {
-  amount: number;
-  currency?: string;
-  planId?: string;
-  paymentType: "platform" | "community";
-  communityId?: string;
-  buttonText?: string;
+// Unified interface for community subscription checkout
+interface CommunitySubscriptionCheckoutProps {
+  communityId?: string; // For existing communities upgrading
+  communitySlug?: string; // Community slug for redirect
+  buttonText?: string | React.ReactNode;
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
+  onStart?: () => void; // Called when payment process starts
+  className?: string;
+  customButton?: (props: any) => React.ReactNode; // Custom button renderer
+  disabled?: boolean;
 }
 
 declare global {
@@ -21,29 +23,61 @@ declare global {
   }
 }
 
-const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
-  amount,
-  currency = "INR",
-  planId,
-  paymentType,
+const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps> = ({
   communityId,
-  buttonText = "Pay Now",
+  communitySlug,
+  buttonText = "Start 14-Day Free Trial",
   onSuccess,
   onError,
+  onStart,
+  className = "",
+  customButton,
+  disabled = false
 }) => {
   const { data: session } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
-  const handlePayment = async () => {
+  // Load Razorpay script
+  useEffect(() => {
+    const loadRazorpayScript = () => {
+      return new Promise((resolve) => {
+        if (window.Razorpay) {
+          setIsScriptLoaded(true);
+          resolve(true);
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => {
+          setIsScriptLoaded(true);
+          resolve(true);
+        };
+        script.onerror = () => {
+          setError("Failed to load payment gateway");
+          resolve(false);
+        };
+        document.body.appendChild(script);
+      });
+    };
+
+    loadRazorpayScript();
+  }, []);
+
+  const handleSubscription = async () => {
     if (!session?.user) {
-      setError("You must be logged in to make a payment");
+      setError("You must be logged in to start a subscription");
       return;
     }
 
-    // Debug: Check if the public key is available
-    console.log("NEXT_PUBLIC_RAZORPAY_KEY_ID:", process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
+    if (!isScriptLoaded) {
+      setError("Payment gateway is not ready. Please try again.");
+      return;
+    }
+
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
       setError("Razorpay configuration error: Public key not found");
       return;
@@ -51,263 +85,267 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
 
     setIsLoading(true);
     setError(null);
+    onStart?.(); // Notify that payment process has started
 
     try {
-      // Create order on the server
-      const orderResponse = await fetch("/api/payments/create-order", {
+      // Create community subscription with standardized plan
+      const response = await fetch("/api/community-subscriptions/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount,
-          currency,
-          planId,
-          paymentType,
           communityId,
+          adminId: session.user.id,
+          customerNotify: true,
+          notes: {
+            planName: "Community Management Plan",
+            adminEmail: session.user.email,
+            communityId: communityId || "new"
+          }
         }),
       });
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || "Failed to create payment order");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create subscription");
       }
 
-      const orderData = await orderResponse.json();
+      const { subscription, razorpaySubscription, shortUrl } = data;
 
-      // Check if Razorpay script is loaded (should be loaded globally now)
-      console.log("Checking if Razorpay script is loaded...");
-      if (!window.Razorpay) {
-        console.log("Razorpay script not found, waiting for it to load...");
-        // Wait a bit for the script to load since it's loaded asynchronously
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        if (!window.Razorpay) {
-          throw new Error("Razorpay script failed to load. Please check your internet connection.");
-        }
-      }
-      console.log("Razorpay script is available");
-
-      // Create Razorpay options with minimal configuration for testing
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_B0Q2ICQRRrWMQr",
-        amount: orderData.amount * 100, // Convert to paise
-        currency: orderData.currency,
-        name: "TheTribeLab",
-        description: paymentType === "platform" ? "Platform Subscription" : "Community Membership",
-        order_id: orderData.orderId,
-        handler: async function (response: any) {
-          console.log("Payment successful:", response);
-          await verifyPayment(
-            orderData.orderId,
-            response.razorpay_payment_id,
-            response.razorpay_signature
-          );
-        },
-        prefill: {
-          name: session.user.name || "",
-          email: session.user.email || "",
-        },
-        theme: {
-          color: "#F37021",
-        },
-        modal: {
-          ondismiss: function() {
-            console.log("Modal dismissed by user");
+      // If subscription requires authentication, open Razorpay checkout
+      if (razorpaySubscription.status === "created" && shortUrl) {
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          subscription_id: razorpaySubscription.id,
+          name: "TheTribeLab",
+          description: "Community Management Plan - $29/month",
+          handler: async function (response: any) {
+            await verifySubscriptionPayment(
+              response.razorpay_subscription_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+          },
+          prefill: {
+            name: session.user.name || "",
+            email: session.user.email || "",
+          },
+          theme: {
+            color: "#F37021",
+          },
+          modal: {
+            ondismiss: function() {
+              console.log("Subscription modal dismissed by user");
+              setIsLoading(false);
+            }
           }
-        }
-      };
+        };
 
-      // Open Razorpay checkout
-      console.log("Creating Razorpay instance with options:", options);
-      const razorpay = new window.Razorpay(options);
-      console.log("Razorpay instance created, opening checkout...");
-
-      // Try to open the checkout
-      try {
+        const razorpay = new window.Razorpay(options);
         razorpay.open();
-        console.log("Razorpay checkout opened successfully");
-      } catch (error) {
-        console.error("Error opening Razorpay checkout:", error);
-        throw error;
-      }
-
-      // Check if modal actually opened after a short delay
-      setTimeout(() => {
-        const razorpayModal = document.querySelector('.razorpay-container') as HTMLElement;
-        const razorpayIframe = document.querySelector('iframe.razorpay-checkout-frame') as HTMLElement;
-
-        if (razorpayModal) {
-          console.log("Razorpay modal found in DOM:", razorpayModal);
-          console.log("Modal visibility:", razorpayModal.style.visibility);
-          console.log("Modal display:", razorpayModal.style.display);
-
-          if (razorpayIframe) {
-            console.log("Razorpay iframe found:", razorpayIframe);
-            console.log("Iframe visibility:", razorpayIframe.style.visibility);
-            console.log("Iframe display:", razorpayIframe.style.display);
-
-            // Force the modal and iframe to be visible
-            if (razorpayModal.style.visibility === 'hidden') {
-              console.log("Forcing modal to be visible...");
-              razorpayModal.style.visibility = 'visible';
-              razorpayModal.style.opacity = '1';
-              razorpayModal.style.zIndex = '999999';
-            }
-
-            if (razorpayIframe.style.visibility === 'hidden' || razorpayIframe.style.display === 'none') {
-              console.log("Forcing iframe to be visible...");
-              razorpayIframe.style.visibility = 'visible';
-              razorpayIframe.style.display = 'block';
-              razorpayIframe.style.opacity = '1';
-            }
-
-            // Check iframe dimensions and positioning
-            const iframeRect = razorpayIframe.getBoundingClientRect();
-            console.log("Iframe dimensions:", {
-              width: iframeRect.width,
-              height: iframeRect.height,
-              top: iframeRect.top,
-              left: iframeRect.left,
-              visible: iframeRect.width > 0 && iframeRect.height > 0
-            });
-
-            // Check if iframe has loaded
-            const iframe = razorpayIframe as HTMLIFrameElement;
-            console.log("Iframe src:", iframe.src);
-            console.log("Iframe loaded:", iframe.src ? "Yes" : "No");
-
-            // Try to ensure iframe is properly sized and positioned
-            if (iframeRect.width === 0 || iframeRect.height === 0) {
-              console.log("Iframe has no dimensions, fixing...");
-              razorpayIframe.style.width = '100%';
-              razorpayIframe.style.height = '100%';
-              razorpayIframe.style.minWidth = '400px';
-              razorpayIframe.style.minHeight = '500px';
-            }
-          }
+      } else {
+        // Subscription created successfully (trial period)
+        onSuccess?.(subscription);
+        // Redirect to community slug URL as requested
+        if (communitySlug) {
+          router.push(`/Newcompage/${communitySlug}?subscription=activated`);
+        } else if (communityId) {
+          // Fallback: try to get community slug from ID
+          router.push(`/Newcompage/${communityId}?subscription=activated`);
         } else {
-          console.log("Razorpay modal NOT found in DOM");
+          router.push(`/admin/communities?subscription=created`);
         }
-      }, 500);
-
-      // Handle Razorpay events
-      razorpay.on("payment.failed", function (response: any) {
-        console.log("Payment failed:", response);
-        setError(`Payment failed: ${response.error.description}`);
-        if (onError) onError(response.error);
-      });
-
-      // Add modal dismiss handler
-      razorpay.on("payment.cancel", function () {
-        console.log("Payment cancelled by user");
-        setError("Payment was cancelled");
-      });
-    } catch (error) {
-      console.error("Payment error:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "An error occurred during payment"
-      );
-      if (onError) onError(error);
+      }
+    } catch (error: any) {
+      console.error("Subscription error:", error);
+      setError(error.message || "An error occurred during subscription");
+      onError?.(error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Load Razorpay script
-  const loadRazorpayScript = () => {
-    return new Promise((resolve, reject) => {
-      console.log("Loading Razorpay script from:", "https://checkout.razorpay.com/v1/checkout.js");
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => {
-        console.log("Razorpay script loaded successfully");
-        resolve(true);
-      };
-      script.onerror = (error) => {
-        console.error("Failed to load Razorpay script:", error);
-        reject(new Error("Failed to load Razorpay script"));
-      };
-      document.body.appendChild(script);
-    });
-  };
-
-  // Verify payment on the server
-  const verifyPayment = async (
-    orderId: string,
+  // Verify subscription payment
+  const verifySubscriptionPayment = async (
+    subscriptionId: string,
     paymentId: string,
     signature: string
   ) => {
     try {
-      // Use the appropriate verification endpoint based on payment type
-      const endpoint = paymentType === "community" 
-        ? "/api/payments/community/verify-payment" 
-        : "/api/payments/verify";
-      
-      const verifyResponse = await fetch(endpoint, {
+      const verifyResponse = await fetch("/api/community-subscriptions/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          orderId,
+          subscriptionId,
           paymentId,
           signature,
-          communityId: paymentType === "community" ? communityId : undefined,
+          communityId
         }),
       });
 
-      if (!verifyResponse.ok) {
-        const errorData = await verifyResponse.json();
-        throw new Error(errorData.error || "Payment verification failed");
-      }
-
       const verifyData = await verifyResponse.json();
 
-      // Call success callback
-      if (onSuccess) onSuccess(verifyData);
+      if (verifyResponse.ok) {
+        // Reset loading state before calling success callback
+        setIsLoading(false);
 
-      // Refresh the page or redirect based on payment type
-      if (paymentType === "platform") {
-        // Redirect to dashboard or admin page
-        router.push("/dashboard");
-        router.refresh();
-      } else if (paymentType === "community" && verifyData.community?.slug) {
-        // Redirect to community page using slug
-        router.push(`/Newcompage/${verifyData.community.slug}`);
-        router.refresh();
-      } else if (paymentType === "community" && communityId) {
-        // Fallback: redirect using ID if slug is not available (this shouldn't happen but kept for safety)
-        router.push(`/Newcompage/${communityId}`);
-        router.refresh();
+        onSuccess?.(verifyData.subscription);
+
+        // Redirect to community slug URL as requested
+        if (communitySlug) {
+          router.push(`/Newcompage/${communitySlug}?subscription=success`);
+        } else if (communityId) {
+          // Fallback: try using communityId as slug (in case it's already a slug)
+          router.push(`/Newcompage/${communityId}?subscription=success`);
+        } else {
+          router.push(`/admin/communities?subscription=success`);
+        }
+      } else {
+        throw new Error(verifyData.error || "Subscription verification failed");
       }
-    } catch (error) {
-      console.error("Verification error:", error);
-      setError(
-        error instanceof Error ? error.message : "Payment verification failed"
-      );
-      if (onError) onError(error);
+    } catch (error: any) {
+      console.error("Subscription verification error:", error);
+      setError(error.message);
+      onError?.(error.message);
+      setIsLoading(false); // Reset loading state on error
     }
   };
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={handlePayment}
-        disabled={isLoading}
-        className="btn bg-primary text-white hover:bg-primary/90 border-none"
-      >
-        {isLoading ? (
-          <span className="loading loading-spinner loading-sm"></span>
-        ) : (
+    <div className={`community-subscription-checkout ${className}`}>
+      {/* Standardized Plan Information */}
+      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+        <h3 className="font-semibold text-lg text-gray-900 mb-2">Community Management Plan</h3>
+        <p className="text-gray-600 text-sm mb-3">Complete community management solution with unlimited features</p>
+        <div className="flex items-center justify-between">
+          <div className="text-2xl font-bold text-blue-600">
+            $29<span className="text-sm font-normal text-gray-500">/month</span>
+          </div>
+          <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded">
+            14 days free trial • Unlimited access
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">Processed as ₹2,400 INR</p>
+      </div>
+
+      {/* Core Features - Always Unlimited */}
+      <div className="mb-4 p-4 bg-green-50 rounded-lg">
+        <h4 className="font-medium text-green-900 mb-2">✨ Unlimited Access Included:</h4>
+        <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Unlimited Members
+          </div>
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Unlimited Storage
+          </div>
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Unlimited Events
+          </div>
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Unlimited Channels
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Features */}
+      <div className="mb-4">
+        <h4 className="font-medium text-gray-900 mb-2">Additional Features:</h4>
+        <ul className="space-y-1">
+          <li className="flex items-center text-sm text-gray-600">
+            <svg className="w-4 h-4 text-blue-500 mr-2 flex-shr-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Analytics & insights
+          </li>
+          <li className="flex items-center text-sm text-gray-600">
+            <svg className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Email support
+          </li>
+          <li className="flex items-center text-sm text-gray-600">
+            <svg className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Cancel anytime
+          </li>
+        </ul>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
+      {customButton ? (
+        customButton({
+          onClick: handleSubscription,
+          disabled: disabled || isLoading || !isScriptLoaded,
+          isLoading,
+          isScriptLoaded,
           buttonText
-        )}
-      </button>
-      {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
+        })
+      ) : (
+        <button
+          type="button"
+          onClick={handleSubscription}
+          disabled={disabled || isLoading || !isScriptLoaded}
+          className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </div>
+          ) : !isScriptLoaded ? (
+            "Loading..."
+          ) : (
+            buttonText
+          )}
+        </button>
+      )}
+
+      <p className="text-xs text-gray-500 text-center mt-3">
+        Secure payment powered by Razorpay • Cancel anytime
+      </p>
     </div>
   );
 };
 
+// Legacy wrapper for backward compatibility with billing page
+const RazorpayCheckout: React.FC<any> = (props) => {
+  // Convert legacy props to new subscription format
+  return (
+    <CommunitySubscriptionCheckout
+      communityId={props.communityId}
+      communitySlug={props.communitySlug}
+      buttonText={props.buttonText || "Subscribe Now ($29/month)"}
+      onSuccess={props.onSuccess}
+      onError={props.onError}
+      className={props.className}
+    />
+  );
+};
+
 export default RazorpayCheckout;
+export { CommunitySubscriptionCheckout };

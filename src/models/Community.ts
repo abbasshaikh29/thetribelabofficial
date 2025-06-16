@@ -45,7 +45,14 @@ export interface ICommunity {
   freeTrialStartDate?: Date; // Start date of free trial
   freeTrialEndDate?: Date; // End date of free trial
   subscriptionEndDate?: Date; // End date of subscription
-  
+
+  // Subscription-only fields for community management
+  subscriptionPlanId?: mongoose.Types.ObjectId;
+  subscriptionStatus?: "trial" | "active" | "past_due" | "cancelled" | "expired";
+  subscriptionId?: string; // Razorpay subscription ID
+  subscriptionStartDate?: Date;
+  trialEndDate?: Date;
+
   // Admin-specific trial information
   adminTrialInfo?: {
     activated: boolean;
@@ -95,31 +102,28 @@ const communitySchema = new Schema<ICommunity>({
     },
   ],
   adminQuestions: [{ type: String }],
-  paymentEnabled: { type: Boolean, default: false },
-  paymentPlans: [{ type: mongoose.Schema.Types.ObjectId, ref: "PaymentPlan" }],
-  subscriptionRequired: { type: Boolean, default: false },
-  isPrivate: { type: Boolean, default: true }, // Default to private
-  price: { type: Number, default: 0 }, // Default price is 0 (free)
-  currency: { type: String, default: "USD" }, // Default currency is USD
-  pricingType: {
-    type: String,
-    enum: ["monthly", "yearly", "one_time"],
-    default: "one_time",
-  }, // Default to one-time payment
-  
-  // New fields for payment and subscription
-  paymentStatus: { 
-    type: String, 
-    enum: ["unpaid", "trial", "paid", "expired"], 
-    default: "unpaid" 
+
+  // Subscription-only fields for community management
+  subscriptionPlanId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "CommunitySubscriptionPlan",
+    required: false // Made optional for migration
   },
+  subscriptionStatus: {
+    type: String,
+    enum: ["trial", "active", "past_due", "cancelled", "expired"],
+    default: "trial"
+  },
+  subscriptionId: { type: String }, // Razorpay subscription ID
+  subscriptionStartDate: { type: Date, default: Date.now },
+  subscriptionEndDate: { type: Date },
+  trialEndDate: { type: Date },
   paymentDate: { type: Date },
   transactionId: { type: String },
   paymentId: { type: String },
   freeTrialActivated: { type: Boolean, default: false },
   freeTrialStartDate: { type: Date },
   freeTrialEndDate: { type: Date },
-  subscriptionEndDate: { type: Date },
   
   // Admin-specific trial information
   adminTrialInfo: {
@@ -147,8 +151,8 @@ function generateSlug(name: string): string {
 communitySchema.pre("save", async function (next) {
   // For new documents or when name is modified, generate a slug
   if (this.isNew || this.isModified("name")) {
-    const oldSlug = this.slug;
-    this.slug = generateSlug(this.name);
+    const oldSlug = (this as any).slug;
+    (this as any).slug = generateSlug((this as any).name);
   }
 
   next();

@@ -2,12 +2,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import dynamic from 'next/dynamic';
-
-const CommunityNav = dynamic(() => import('./CommunityNav'), {
-  loading: () => <div className="h-16 bg-base-200"></div>, // Simple placeholder for nav height
-  ssr: false // Optional: if CommunityNav relies heavily on client-side things
-});
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -545,9 +539,7 @@ function Calander() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <CommunityNav />
-
-      <div className="mt-6">
+      <div>
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col space-y-4 mb-6">

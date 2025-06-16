@@ -117,23 +117,46 @@ const nextConfig = {
   reactStrictMode: true,
   // Disable x-powered-by header for security
   poweredByHeader: false,
-  // Add cross-origin headers for better browser compatibility
+  // Add security headers and controlled CORS
   async headers() {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const allowedOrigins = isDevelopment
+      ? ['http://localhost:3000', 'https://localhost:3000']
+      : ['https://thetribelab.com', 'https://www.thetribelab.com'];
+
     return [
       {
         source: "/(.*)",
         headers: [
+          // Security headers
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          // CORS headers (more restrictive)
           {
             key: "Cross-Origin-Opener-Policy",
             value: "same-origin-allow-popups",
           },
           {
             key: "Cross-Origin-Resource-Policy",
-            value: "cross-origin",
-          },
-          {
-            key: "Access-Control-Allow-Origin",
-            value: "*",
+            value: "same-site",
           },
           {
             key: "Access-Control-Allow-Methods",
@@ -141,7 +164,25 @@ const nextConfig = {
           },
           {
             key: "Access-Control-Allow-Headers",
-            value: "X-Requested-With, Content-Type, Authorization",
+            value: "X-Requested-With, Content-Type, Authorization, X-CSRF-Token",
+          },
+          {
+            key: "Access-Control-Max-Age",
+            value: "86400",
+          },
+        ],
+      },
+      // API routes with stricter CORS
+      {
+        source: "/api/(.*)",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: isDevelopment ? "http://localhost:3000" : "https://thetribelab.com",
+          },
+          {
+            key: "Access-Control-Allow-Credentials",
+            value: "true",
           },
         ],
       },

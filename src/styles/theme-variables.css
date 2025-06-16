@@ -17,7 +17,7 @@
 /* Light Theme */
 [data-theme="light"] {
   /* Background colors */
-  --bg-primary: #ffffff;
+  --bg-primary: #fff1de;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
   --bg-accent: #e2e8f0;
@@ -67,13 +67,13 @@
 /* Dark Theme */
 [data-theme="dark"] {
   /* Background colors */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
+  --bg-primary: #24272c;
+  --bg-secondary: #1a1e24;
   --bg-tertiary: #334155;
   --bg-accent: #475569;
 
   /* Text colors */
-  --text-primary: #f8fafc;
+  --text-primary: #feffe2;
   --text-secondary: #e2e8f0;
   --text-tertiary: #cbd5e1;
   --text-muted: #94a3b8;
@@ -90,7 +90,7 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
 
   /* Component specific */
-  --card-bg: #1e293b;
+  --card-bg: #1a1e24;
   --card-border: #334155;
   --input-bg: #1e293b;
   --input-border: #475569;

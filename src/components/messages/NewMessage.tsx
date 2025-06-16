@@ -49,7 +49,7 @@ export default function NewMessage({
     if (session?.user?.id) {
       fetchUsers();
     }
-  }, [session, showNotification]);
+  }, [session]);
 
   const filteredUsers = users.filter((user) =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase())

@@ -69,7 +69,7 @@ export default function CommunityAccessSettings() {
     if (session?.user && slug) {
       fetchSettings();
     }
-  }, [slug, session?.user, showNotification]);
+  }, [slug, session?.user?.id]);
 
   // Handle visibility toggle
   const handleVisibilityToggle = async () => {
@@ -85,6 +85,7 @@ export default function CommunityAccessSettings() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...settings,
           isPrivate: newValue,
         }),
       });
@@ -100,13 +101,13 @@ export default function CommunityAccessSettings() {
       const data = await response.json();
       console.log("Visibility update response:", data);
 
-      setSettings({
-        ...settings,
-        isPrivate: newValue,
-      });
+      setSettings((prevSettings) => ({
+        ...prevSettings,
+        isPrivate: data.isPrivate !== undefined ? data.isPrivate : true,
+      }));
 
       showNotification(
-        `Community is now ${newValue ? "private" : "public"}`,
+        `Community is now ${data.isPrivate ? "private" : "public"}`,
         "success"
       );
     } catch (error) {
@@ -140,11 +141,7 @@ export default function CommunityAccessSettings() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          price: settings.price,
-          currency: settings.currency,
-          pricingType: settings.pricingType,
-        }),
+        body: JSON.stringify(settings),
       });
 
       if (!response.ok) {
@@ -155,6 +152,13 @@ export default function CommunityAccessSettings() {
 
       const data = await response.json();
       console.log("Price update response:", data);
+
+      setSettings((prevSettings) => ({
+        ...prevSettings,
+        price: data.price !== undefined ? data.price : 0,
+        currency: data.currency || "USD",
+        pricingType: data.pricingType || "one_time",
+      }));
 
       showNotification("Community price updated successfully", "success");
     } catch (error) {
@@ -233,27 +237,22 @@ export default function CommunityAccessSettings() {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="form-control w-full md:w-1/2">
                 <label className="label">
-                  <span className="label-text">Price</span>
+                  <span className="label-text">Price ($)</span>
                 </label>
-                <div className="input-group">
-                  <span className="flex items-center px-3 bg-base-200">
-                    <DollarSign size={16} />
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={settings.price}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        price: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="input input-bordered w-full"
-                    placeholder="Enter price"
-                  />
-                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*"
+                  value={settings.price}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      price: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="input input-bordered w-full"
+                  placeholder="Enter price"
+                />
               </div>
 
               <div className="form-control w-full md:w-1/2">

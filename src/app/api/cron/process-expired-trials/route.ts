@@ -8,7 +8,12 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
     
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret) {
+      console.error("CRON_SECRET environment variable is not set");
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
+
+    if (authHeader !== `Bearer ${cronSecret}`) {
       console.error("Unauthorized access attempt to expired trials cron endpoint");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

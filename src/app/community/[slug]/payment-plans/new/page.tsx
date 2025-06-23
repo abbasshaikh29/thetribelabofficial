@@ -244,15 +244,21 @@ export default function NewPaymentPlanPage() {
                   <span className="label-text font-medium">Price</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   id="amount"
                   value={amount}
-                  onChange={(e) => setAmount(parseFloat(e.target.value))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = parseFloat(value);
+                    if (value === "" || (!isNaN(numValue) && numValue >= 0)) {
+                      setAmount(value === "" ? 0 : numValue);
+                    }
+                  }}
                   className="input input-bordered w-full"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
+                  placeholder="e.g. 10.00"
                   required
+                  min="0"
                 />
               </div>
 

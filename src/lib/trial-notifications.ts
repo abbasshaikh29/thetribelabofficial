@@ -1,10 +1,11 @@
 import { Community } from '@/models/Community';
 import { dbconnect } from './db';
-import { sendEmail } from './email';
+import { sendTrialReminderEmail } from './resend';
 import { User } from '@/models/User';
 import { createNotification } from './notifications';
 import { TrialHistory } from '@/models/TrialHistory';
 import { processExpiredTrials } from './trial-expiration-service';
+import { EmailQueue } from './email-queue';
 
 // Days before expiration when we want to send notifications
 const NOTIFICATION_DAYS = [7, 3, 1];
@@ -131,32 +132,41 @@ async function sendTrialExpirationNotifications(trial: any, daysLeft: number) {
     });
 
     // Send email notification with enhanced warning
-    await sendEmail({
+    const emailHtml = `
+      <h2>Your Trial is Ending Soon</h2>
+      <p>${message}</p>
+      <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 5px;">
+        <h3 style="color: #856404; margin-top: 0;">⚠️ Important Reminder</h3>
+        <p><strong>This is your one-time free trial.</strong> After expiration:</p>
+        <ul>
+          <li>You cannot start another trial</li>
+          <li>${trial.trialType === 'community' ? 'Your community will be suspended' : 'Your premium access will be revoked'}</li>
+          <li>You must subscribe to continue using premium features</li>
+        </ul>
+      </div>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${process.env.NEXTAUTH_URL}${linkUrl}"
+           style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+          Upgrade Now
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #666;">
+        Trial ends on: ${trial.endDate.toLocaleDateString()} at ${trial.endDate.toLocaleTimeString()}
+      </p>
+    `;
+
+    await EmailQueue.addJob({
       to: user.email,
       subject: title,
       text: message,
-      html: `
-        <h2>Your Trial is Ending Soon</h2>
-        <p>${message}</p>
-        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h3 style="color: #856404; margin-top: 0;">⚠️ Important Reminder</h3>
-          <p><strong>This is your one-time free trial.</strong> After expiration:</p>
-          <ul>
-            <li>You cannot start another trial</li>
-            <li>${trial.trialType === 'community' ? 'Your community will be suspended' : 'Your premium access will be revoked'}</li>
-            <li>You must subscribe to continue using premium features</li>
-          </ul>
-        </div>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.NEXTAUTH_URL}${linkUrl}"
-             style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-            Upgrade Now
-          </a>
-        </p>
-        <p style="font-size: 12px; color: #666;">
-          Trial ends on: ${trial.endDate.toLocaleDateString()} at ${trial.endDate.toLocaleTimeString()}
-        </p>
-      `
+      html: emailHtml,
+      category: 'trial_reminder',
+      priority: daysLeft <= 3 ? 'high' : 'normal',
+      tags: [
+        { name: 'trial_type', value: trial.trialType },
+        { name: 'days_left', value: daysLeft.toString() },
+        ...(trial.communityId ? [{ name: 'community_id', value: trial.communityId.toString() }] : [])
+      ]
     });
 
     console.log(`Sent trial expiration notification for ${trial.trialType} trial (${daysLeft} days left) to user ${trial.userId}`);

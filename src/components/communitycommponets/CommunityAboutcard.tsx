@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import { ICommunity } from "@/models/Community";
 import { useSession } from "next-auth/react";
 import { useSettingsModal } from "@/components/modals/SettingsModalProvider";
-import CommunityJoinForm from "../CommunityJoinForm";
 import { Users, Link as LinkIcon, Copy, Check } from "lucide-react";
+import CommunityJoinForm from "@/components/CommunityJoinForm";
+import { useRouter } from "next/navigation";
 
 async function getCommunity(slug: string): Promise<{
   community: ICommunity | null;
@@ -66,15 +66,17 @@ interface NewCommmunityPageProps {
 function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
   const { data: session } = useSession();
   const { openCommunitySettings } = useSettingsModal();
+  const router = useRouter();
   const [communityData, setCommunityData] = useState<{
     community: ICommunity | null;
   }>({ community: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
-  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -87,9 +89,14 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
           setCommunityData({
             community: data.community,
           });
-          setIsMember(
-            data.community?.members?.includes(session?.user?.id!) || false
+          const userId = session?.user?.id;
+          setIsMember(data.community?.members?.includes(userId!) || false);
+
+          // Check pending join request status
+          const pending = data.community?.joinRequests?.some(
+            (req: any) => req.userId === userId && req.status === "pending"
           );
+          setHasPendingRequest(pending || false);
         } else if (data.error) {
           setError(data.error);
         } else {
@@ -105,20 +112,8 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
 
     if (slug) {
       fetchData();
-
-      // Add a refresh interval to keep the data updated
-      const refreshInterval = setInterval(() => {
-        if (slug) {
-          fetchData();
-        }
-      }, 5000); // Refresh every 5 seconds
-
-      return () => clearInterval(refreshInterval);
-    } else {
-      setError("Invalid community slug");
-      setLoading(false);
     }
-  }, [slug, session?.user?.id]);
+  }, [slug]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -155,11 +150,6 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
       : description;
   };
 
-  const handleJoinSuccess = () => {
-    setShowJoinForm(false);
-    setIsMember(true);
-  };
-
   const getInviteLink = () => {
     // Create the invite link to the about page
     const baseUrl = window.location.origin;
@@ -177,13 +167,52 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
     }
   };
 
+  const handleFollow = async () => {
+    if (!session?.user?.id || !communityData.community?._id) {
+      // ... existing code ...
+    }
+  };
+
+  const handleJoinClick = () => {
+    if (!communityData.community) return;
+
+    const isPaid =
+      communityData.community.price && communityData.community.price > 0;
+
+    if (isPaid) {
+      router.push(`/community/${slug}/payment-plans/new`);
+    } else {
+      setShowJoinModal(true);
+    }
+  };
+
+  const getJoinButtonText = () => {
+    if (!communityData.community) return "Join Community";
+
+    const { price, pricingType } = communityData.community;
+    const isPaid = price && price > 0;
+
+    if (!isPaid) {
+      return "Request to Join";
+    }
+
+    let priceText = `$${price}`;
+    if (pricingType === "monthly") {
+      priceText += "/mo";
+    } else if (pricingType === "yearly") {
+      priceText += "/yr";
+    }
+
+    return `Join for ${priceText}`;
+  };
+
   return (
     <>
       <div className="card bg-base-100 shadow-xl overflow-hidden flex flex-col justify-between w-full mx-auto">
         <div className="w-full h-48 overflow-hidden relative">
           {communityData.community?.bannerImageurl ? (
             <div
-              className="w-full h-full bg-gray-200"
+              className="w-full h-full bg-base-300"
               style={{
                 backgroundImage: `url(${communityData.community.bannerImageurl})`,
                 backgroundSize: "cover",
@@ -195,8 +224,8 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
               } banner`}
             />
           ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-400">No banner image</span>
+            <div className="w-full h-full bg-gradient-to-r from-primary/40 to-primary/20 flex items-center justify-center">
+               <Users size={64} className="text-primary opacity-70" />
             </div>
           )}
         </div>
@@ -237,7 +266,8 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
               </span>
             </div>
           </div>
-          {isMember ? (
+          {/* Actions for members */}
+          {isMember && (
             <div className="card-actions mt-4 flex-col w-full gap-2">
               <button
                 type="button"
@@ -255,44 +285,40 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
                 Invite Members
               </button>
             </div>
-          ) : (
-            <div className="card-actions mt-4">
+          )}
+
+          {/* Actions for non-members */}
+          {!isMember && (
+            <div className="card-actions mt-4 flex-col w-full gap-2">
+              {!hasPendingRequest ? (
+                <button
+                  type="button"
+                  className="btn btn-primary w-full"
+                  onClick={handleJoinClick}
+                >
+                  {getJoinButtonText()}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-disabled w-full"
+                  disabled
+                >
+                  Join Request Pending
+                </button>
+              )}
+
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowJoinForm(true)}
+                className="btn btn-outline w-full"
+                onClick={handleFollow}
               >
-                Join Group
+                Follow Community
               </button>
             </div>
           )}
         </div>
       </div>
-
-      {/* Join Form Modal */}
-      {showJoinForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-base-100 p-6 rounded-lg shadow-xl w-96">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Join Community</h2>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => setShowJoinForm(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <CommunityJoinForm
-              communityId={communityData.community?._id?.toString() || ""}
-              communitySlug={slug}
-              communityName={communityData.community?.name || ""}
-              questions={communityData.community?.adminQuestions || []}
-              onSuccess={handleJoinSuccess}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Invite Members Modal */}
       {showInviteModal && (
@@ -348,6 +374,36 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Modal */}
+      {showJoinModal && communityData.community && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Join {communityData.community.name}</h2>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowJoinModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <CommunityJoinForm
+              communityId={communityData.community._id as unknown as string}
+              communitySlug={slug}
+              communityName={communityData.community.name}
+              questions={communityData.community.adminQuestions || []}
+              onSuccess={() => {
+                setShowJoinModal(false);
+                // refresh member state
+                setIsMember(true);
+                setHasPendingRequest(false);
+              }}
+            />
           </div>
         </div>
       )}

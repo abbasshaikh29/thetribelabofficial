@@ -6,7 +6,7 @@ export interface ICommunitySubscriptionPlan {
   description?: string;
   amount: number; // Price in paise (e.g., 240000 = ₹2,400 for $29/month)
   currency: string; // Always "INR"
-  interval: "monthly"; // Only monthly subscriptions
+  interval: "monthly" | "yearly";
   intervalCount: number; // Always 1
   trialPeriodDays: number; // Always 14 days
   features: string[]; // Unlimited features list
@@ -40,7 +40,7 @@ const communitySubscriptionPlanSchema = new Schema<ICommunitySubscriptionPlan>(
     currency: { type: String, required: true, default: "INR" },
     interval: {
       type: String,
-      enum: ["monthly"],
+      enum: ["monthly", "yearly"],
       default: "monthly",
       required: true
     },

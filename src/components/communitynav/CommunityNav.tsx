@@ -269,7 +269,7 @@ function CommunityNav() {
                     </span>
                   </Link>
                 ) : (
-                  <span className="text-sm sm:text-lg md:text-xl font-bold text-gray-500">
+                  <span className="text-sm sm:text-lg md:text-xl font-bold text-muted">
                     {Name || 'Invalid Community'}
                   </span>
                 )}
@@ -343,7 +343,7 @@ function CommunityNav() {
                       </li>
                     ))
                   ) : (
-                    <li className="px-4 py-2 text-sm text-gray-500">
+                    <li className="px-4 py-2 text-sm text-muted">
                       You haven't joined any other communities
                     </li>
                   )}

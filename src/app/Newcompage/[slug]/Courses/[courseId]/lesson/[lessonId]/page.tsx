@@ -16,6 +16,7 @@ import {
   ExternalLink,
   FileText,
 } from "lucide-react";
+import DOMPurify from "dompurify";
 
 interface Lesson {
   _id: string;
@@ -89,6 +90,24 @@ export default function LessonView() {
       lessons: { _id: string; title: string; isCompleted: boolean }[];
     }[]
   >([]);
+
+  // Helper function to safely sanitize HTML content
+  const sanitizeContent = (content: string): string => {
+    if (typeof window === 'undefined') {
+      // Server-side: basic script tag removal
+      return content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    }
+
+    // Client-side: use DOMPurify
+    return DOMPurify.sanitize(content, {
+      ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'code', 'pre'
+      ],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel'],
+      FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'iframe']
+    });
+  };
 
   // Fetch lesson details
   useEffect(() => {
@@ -327,17 +346,7 @@ export default function LessonView() {
                   <div
                     className="prose max-w-none mb-6"
                     dangerouslySetInnerHTML={{
-                      __html: typeof window !== 'undefined'
-                        ? require('dompurify').sanitize(lesson.content, {
-                            ALLOWED_TAGS: [
-                              'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                              'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'code', 'pre'
-                            ],
-                            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel'],
-                            FORBID_SCRIPT: true,
-                            FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'iframe']
-                          })
-                        : lesson.content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                      __html: sanitizeContent(lesson.content)
                     }}
                   />
                 )}

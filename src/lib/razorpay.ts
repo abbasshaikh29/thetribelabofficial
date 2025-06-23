@@ -294,20 +294,27 @@ export const capturePayment = async (paymentId: string, amount: number) => {
 /**
  * Create a Razorpay customer
  * @param customerData Customer details
+ * @param creds Optional Razorpay API credentials
  * @returns Razorpay customer object
  */
-export const createCustomer = async (customerData: {
-  name: string;
-  email: string;
-  contact?: string;
-  notes?: Record<string, string>;
-}): Promise<RazorpayCustomer> => {
-  if (!razorpayKeyId || !razorpayKeySecret) {
+export const createCustomer = async (
+  customerData: {
+    name: string;
+    email: string;
+    contact?: string;
+    notes?: Record<string, string>;
+  },
+  creds?: { apiKey: string; secretKey: string }
+): Promise<RazorpayCustomer> => {
+  const keyId = creds?.apiKey || razorpayKeyId;
+  const keySecret = creds?.secretKey || razorpayKeySecret;
+
+  if (!keyId || !keySecret) {
     throw new Error("Razorpay is not configured");
   }
 
   try {
-    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 
     const response = await fetch("https://api.razorpay.com/v1/customers", {
       method: "POST",
@@ -335,25 +342,32 @@ export const createCustomer = async (customerData: {
 /**
  * Create a subscription plan
  * @param planData Plan details
+ * @param creds Optional Razorpay API credentials
  * @returns Razorpay plan object
  */
-export const createPlan = async (planData: {
-  period: "daily" | "weekly" | "monthly" | "yearly";
-  interval: number;
-  item: {
-    name: string;
-    amount: number;
-    currency: string;
-    description?: string;
-  };
-  notes?: Record<string, string>;
-}): Promise<RazorpayPlan> => {
-  if (!razorpayKeyId || !razorpayKeySecret) {
+export const createPlan = async (
+  planData: {
+    period: "daily" | "weekly" | "monthly" | "yearly";
+    interval: number;
+    item: {
+      name: string;
+      amount: number;
+      currency: string;
+      description?: string;
+    };
+    notes?: Record<string, string>;
+  },
+  creds?: { apiKey: string; secretKey: string }
+): Promise<RazorpayPlan> => {
+  const keyId = creds?.apiKey || razorpayKeyId;
+  const keySecret = creds?.secretKey || razorpayKeySecret;
+
+  if (!keyId || !keySecret) {
     throw new Error("Razorpay is not configured");
   }
 
   try {
-    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 
     console.log("Sending plan data to Razorpay:", planData);
 
@@ -384,36 +398,43 @@ export const createPlan = async (planData: {
 /**
  * Create a subscription
  * @param subscriptionData Subscription details
+ * @param creds Optional Razorpay API credentials
  * @returns Razorpay subscription object
  */
-export const createSubscription = async (subscriptionData: {
-  plan_id: string;
-  customer_id: string;
-  quantity?: number;
-  total_count?: number;
-  end_at?: number;
-  customer_notify?: boolean;
-  start_at?: number;
-  expire_by?: number;
-  addons?: Array<{
-    item: {
-      name: string;
-      amount: number;
-      currency: string;
+export const createSubscription = async (
+  subscriptionData: {
+    plan_id: string;
+    customer_id: string;
+    quantity?: number;
+    total_count?: number;
+    end_at?: number;
+    customer_notify?: boolean;
+    start_at?: number;
+    expire_by?: number;
+    addons?: Array<{
+      item: {
+        name: string;
+        amount: number;
+        currency: string;
+      };
+    }>;
+    notes?: Record<string, string>;
+    notify_info?: {
+      notify_phone?: string;
+      notify_email?: string;
     };
-  }>;
-  notes?: Record<string, string>;
-  notify_info?: {
-    notify_phone?: string;
-    notify_email?: string;
-  };
-}): Promise<RazorpaySubscription> => {
-  if (!razorpayKeyId || !razorpayKeySecret) {
+  },
+  creds?: { apiKey: string; secretKey: string }
+): Promise<RazorpaySubscription> => {
+  const keyId = creds?.apiKey || razorpayKeyId;
+  const keySecret = creds?.secretKey || razorpayKeySecret;
+
+  if (!keyId || !keySecret) {
     throw new Error("Razorpay is not configured");
   }
 
   try {
-    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 
     // Filter out undefined values from subscription data
     const cleanedSubscriptionData = Object.fromEntries(
@@ -461,15 +482,22 @@ export const createSubscription = async (subscriptionData: {
 /**
  * Fetch subscription details
  * @param subscriptionId Razorpay subscription ID
+ * @param creds Optional Razorpay API credentials
  * @returns Subscription details
  */
-export const fetchSubscription = async (subscriptionId: string): Promise<RazorpaySubscription> => {
-  if (!razorpayKeyId || !razorpayKeySecret) {
+export const fetchSubscription = async (
+  subscriptionId: string,
+  creds?: { apiKey: string; secretKey: string }
+): Promise<RazorpaySubscription> => {
+  const keyId = creds?.apiKey || razorpayKeyId;
+  const keySecret = creds?.secretKey || razorpayKeySecret;
+
+  if (!keyId || !keySecret) {
     throw new Error("Razorpay is not configured");
   }
 
   try {
-    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 
     const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}`, {
       method: "GET",
@@ -497,18 +525,23 @@ export const fetchSubscription = async (subscriptionId: string): Promise<Razorpa
  * Cancel a subscription
  * @param subscriptionId Razorpay subscription ID
  * @param cancelAtCycleEnd Whether to cancel at the end of current cycle
+ * @param creds Optional Razorpay API credentials
  * @returns Cancelled subscription details
  */
 export const cancelSubscription = async (
   subscriptionId: string,
-  cancelAtCycleEnd: boolean = false
+  cancelAtCycleEnd: boolean = false,
+  creds?: { apiKey: string; secretKey: string }
 ): Promise<RazorpaySubscription> => {
-  if (!razorpayKeyId || !razorpayKeySecret) {
+  const keyId = creds?.apiKey || razorpayKeyId;
+  const keySecret = creds?.secretKey || razorpayKeySecret;
+
+  if (!keyId || !keySecret) {
     throw new Error("Razorpay is not configured");
   }
 
   try {
-    const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 
     const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}/cancel`, {
       method: "POST",

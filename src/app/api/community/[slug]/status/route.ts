@@ -16,54 +16,68 @@ export async function GET(
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
+    console.log('Community status endpoint called');
     const session = await getServerSession();
     const resolvedParams = await context.params;
     const { slug } = resolvedParams;
 
     if (!slug) {
+      console.log('No slug provided');
       return NextResponse.json(
-        { error: "Slug is required" },
+        { error: "Slug is required", found: false },
         { status: 400 }
       );
     }
 
+    console.log('Connecting to database for slug:', slug);
     await dbconnect();
 
     // Find the community by slug
+    console.log('Finding community by slug:', slug);
     const community = await Community.findOne({ slug }).lean() as unknown as CommunityDocument;
 
     if (!community) {
+      console.log('Community not found for slug:', slug);
       return NextResponse.json(
-        { error: "Community not found" },
+        { error: "Community not found", found: false },
         { status: 404 }
       );
     }
 
+    console.log('Community found:', community._id.toString());
+
     // If user is authenticated and is the admin, use comprehensive status
     if (session?.user?.id && community.admin.toString() === session.user.id) {
+      console.log('User is admin, getting comprehensive status');
       const comprehensiveStatus = await getCommunityStatus(community._id.toString());
 
       if (comprehensiveStatus.found && comprehensiveStatus.community) {
+        console.log('Comprehensive status found');
         return NextResponse.json({
-          ...comprehensiveStatus,
-          // Add legacy fields for backward compatibility
-          communityId: community._id.toString(),
+          found: true,
+          community: {
+            _id: community._id.toString(),
+            name: community.name,
           slug: community.slug,
-          name: community.name,
-          suspended: comprehensiveStatus.community.suspended || false,
-          hasActiveTrialOrPayment: comprehensiveStatus.hasActiveSubscription || comprehensiveStatus.hasActiveTrial,
-          paymentStatus: comprehensiveStatus.community.paymentStatus || 'unpaid',
+            admin: community.admin.toString(),
+            adminTrialInfo: comprehensiveStatus.community.adminTrialInfo,
+            paymentStatus: comprehensiveStatus.community.paymentStatus,
+            subscriptionEndDate: comprehensiveStatus.community.subscriptionEndDate,
+            subscriptionId: comprehensiveStatus.community.subscriptionId,
+            subscriptionStatus: comprehensiveStatus.community.subscriptionStatus,
+            suspended: comprehensiveStatus.community.suspended,
+            freeTrialActivated: comprehensiveStatus.community.freeTrialActivated
+          },
+          hasActiveSubscription: comprehensiveStatus.hasActiveSubscription,
+          hasActiveTrial: comprehensiveStatus.hasActiveTrial,
           daysRemaining: comprehensiveStatus.daysRemaining,
-          trialInfo: {
-            activated: comprehensiveStatus.community.adminTrialInfo?.activated || false,
-            hasUsedTrial: comprehensiveStatus.community.adminTrialInfo?.hasUsedTrial || false,
-            startDate: comprehensiveStatus.community.adminTrialInfo?.startDate,
-            endDate: comprehensiveStatus.community.adminTrialInfo?.endDate,
-          }
+          isEligibleForTrial: comprehensiveStatus.isEligibleForTrial,
+          hasActiveTrialOrPayment: comprehensiveStatus.hasActiveSubscription || comprehensiveStatus.hasActiveTrial
         });
       }
     }
 
+    console.log('Using basic status check for non-admin or fallback');
     // Fallback to basic status check for non-admin users or if comprehensive status fails
     const suspended = community.suspended || false;
     const suspensionReason = community.suspensionReason || null;
@@ -99,11 +113,20 @@ export async function GET(
       }
     }
 
+    console.log('Returning basic status');
     return NextResponse.json({
       found: true,
-      communityId: community._id.toString(),
+      community: {
+        _id: community._id.toString(),
+        name: community.name,
       slug: community.slug,
-      name: community.name,
+        admin: community.admin.toString(),
+        adminTrialInfo: community.adminTrialInfo,
+        paymentStatus: community.paymentStatus,
+        subscriptionEndDate: community.subscriptionEndDate,
+        subscriptionId: community.subscriptionId,
+        freeTrialActivated: community.freeTrialActivated
+      },
       suspended,
       suspensionReason,
       suspendedAt,
@@ -112,19 +135,13 @@ export async function GET(
       hasActiveTrial: hasActiveTrialOrPayment && community.paymentStatus !== 'paid',
       paymentStatus: community.paymentStatus,
       daysRemaining,
-      isEligibleForTrial: !hasActiveTrialOrPayment && !community.adminTrialInfo?.hasUsedTrial,
-      trialInfo: {
-        activated: community.adminTrialInfo?.activated || false,
-        hasUsedTrial: community.adminTrialInfo?.hasUsedTrial || false,
-        startDate: community.adminTrialInfo?.startDate,
-        endDate: community.adminTrialInfo?.endDate,
-      }
+      isEligibleForTrial: !hasActiveTrialOrPayment && !community.adminTrialInfo?.hasUsedTrial
     });
   } catch (error) {
     console.error("Error checking community status:", error);
     return NextResponse.json(
       {
-        error: "Failed to check community status",
+        error: error instanceof Error ? error.message : "Failed to check community status",
         found: false,
         // Return safe defaults in case of error
         suspended: false,

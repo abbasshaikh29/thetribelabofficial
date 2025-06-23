@@ -126,9 +126,9 @@ export default function PayNowButton({
           disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
         }`}
         disabled={disabled || isProcessing}
-        customButton={(props) => (
+        customButton={({ isLoading: _isLoading, isScriptLoaded: _isScriptLoaded, buttonText: _btnText, ...buttonProps }) => (
           <button
-            {...props}
+            {...buttonProps}
             className={`${styles.button} ${sizeStyles} border rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 w-full ${
               disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
             }`}
@@ -146,7 +146,7 @@ export default function PayNowButton({
                     <Zap className={`w-4 h-4 ${styles.icon}`} /> :
                     <CreditCard className={`w-4 h-4 ${styles.icon}`} />
                 )}
-                <span>{buttonText}</span>
+                <span>{_btnText}</span>
               </>
             )}
           </button>

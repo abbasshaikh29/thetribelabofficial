@@ -13,12 +13,19 @@ interface MessagingPreferences {
   blockedCommunities: string[]; // Array of community IDs where messaging is blocked
 }
 
+// Payment details related to the USER acting as a MEMBER purchasing subscriptions
+// This Razorpay customer ID is created the first time the user buys something for themselves.
 interface PaymentSettings {
+  /** Razorpay customer ID for the user's personal purchases (member subscriptions, one-time payments, etc.) */
+  razorpayCustomerId?: string;
   subscriptionStatus?: string;
   subscriptionEndDate?: Date;
 }
 
+// Payment details related to the USER acting as a COMMUNITY ADMIN collecting revenue
+// This Razorpay customer ID belongs to the admin's seller account and is used for subscriptions created on behalf of their community.
 interface CommunityAdminSubscription {
+  /** Razorpay customer ID for the admin's seller account (community revenue) */
   razorpayCustomerId?: string;
   // Community admin subscription management
   adminSubscriptions: Array<{
@@ -156,6 +163,11 @@ const userSchema = new mongoose.Schema<IUser>(
     level: { type: Number, default: 1 },
     monthlyPoints: { type: Number, default: 0 },
     lastPointsReset: { type: Date, default: Date.now },
+    paymentSettings: {
+      razorpayCustomerId: { type: String },
+      subscriptionStatus: { type: String },
+      subscriptionEndDate: { type: Date },
+    },
   },
   {
     timestamps: true,

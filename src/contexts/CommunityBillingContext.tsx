@@ -193,17 +193,6 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
     }
   }, [slug, session?.user?.id]);
 
-  useEffect(() => {
-    if (!slug || !session?.user?.id) return;
-
-    const refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing billing data (context)...');
-      fetchBillingData(true);
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(refreshInterval);
-  }, [slug, session?.user?.id]);
-
   // Computed values - use status endpoint data when available, fallback to local calculations
   const calculateDaysRemaining = () => {
     if (!billingData?.adminTrialInfo?.endDate) return 0;

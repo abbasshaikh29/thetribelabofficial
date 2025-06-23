@@ -8,13 +8,8 @@ import { checkCommunityAccess, createSuspendedCommunityResponse } from "./middle
 
 // This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
-  // Check for auth cookie instead of using auth() function
-  const authCookie =
-    request.cookies.get("next-auth.session-token") ||
-    request.cookies.get("__Secure-next-auth.session-token");
-
-  // User is authenticated if they have the auth cookie
-  const isAuthenticated = !!authCookie;
+  const token = await getToken({ req: request });
+  const isAuthenticated = !!token;
 
   // Protected routes that require authentication
   const protectedPaths = [
@@ -25,6 +20,21 @@ export async function middleware(request: NextRequest) {
   ];
 
   const path = request.nextUrl.pathname;
+
+  // New check for /admin routes
+  if (path.startsWith("/admin")) {
+    if (!isAuthenticated) {
+      // Not logged in, redirect to login
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    // Logged in, check role
+    if (token.role !== "platform_admin") {
+      // Not a platform admin, redirect to homepage
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    // Allowed, continue
+    return NextResponse.next();
+  }
 
   // Check if the path is protected and user is not authenticated
   const isProtectedPath = protectedPaths.some(
@@ -57,9 +67,7 @@ export async function middleware(request: NextRequest) {
     }
     
     try {
-      // Get the user token to extract the user ID
-      const token = await getToken({ req: request });
-
+      // Reuse previously obtained token
       if (!token || !token.sub) {
         return NextResponse.next();
       }
@@ -105,5 +113,6 @@ export const config = {
     "/Newcompage/:path*",
     "/login",
     "/register",
+    "/admin/:path*",
   ],
 };

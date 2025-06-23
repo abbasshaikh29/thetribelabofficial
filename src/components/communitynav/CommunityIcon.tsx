@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import { addCacheBusting, preloadImage } from "@/utils/crossBrowserImageUtils";
 import { convertS3UrlToR2, isS3Url } from "@/utils/s3-to-r2-migration";
 
@@ -62,15 +62,13 @@ const CommunityIcon: React.FC<CommunityIconProps> = ({
     setIsLoading(false);
   };
 
-  // Fallback component
+  // Fallback component (uses a default placeholder image in /public)
   const renderFallback = () => (
     <div
-      className={`${sizeClasses[size]} rounded-md overflow-hidden ${borderClasses} ${shadowClasses} flex-shrink-0 bg-primary/20 flex items-center justify-center ${className}`}
+      className={`${sizeClasses[size]} rounded-md overflow-hidden ${borderClasses} ${shadowClasses} flex-shrink-0 bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center ${className}`}
       title={name}
     >
-      <span className={`${fontSizeClasses[size]} font-bold text-primary`}>
-        {name ? name.charAt(0).toUpperCase() : "C"}
-      </span>
+      <Users className="text-primary opacity-70" size={size === "lg" ? 32 : size === "md" ? 24 : 20} />
     </div>
   );
 

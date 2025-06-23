@@ -155,9 +155,9 @@ export default function CommunityPlanInfo() {
 
 
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="flex flex-col gap-6 w-full max-w-full">
         {/* Current Plan Status */}
-        <div className="card bg-base-200 shadow-md">
+        <div className="card bg-base-200 shadow-md w-full">
           <div className="card-body">
             <h3 className="card-title flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
@@ -197,7 +197,7 @@ export default function CommunityPlanInfo() {
 
         {/* Trial Information */}
         {trialActive && (
-          <div className="card bg-base-200 shadow-md">
+          <div className="card bg-base-200 shadow-md w-full">
             <div className="card-body">
               <h3 className="card-title flex items-center gap-2">
                 <Clock className="w-5 h-5" />
@@ -249,7 +249,7 @@ export default function CommunityPlanInfo() {
         )}
 
         {/* Plan Features */}
-        <div className="card bg-base-200 shadow-md">
+        <div className="card bg-base-200 shadow-md w-full">
           <div className="card-body">
             <h3 className="card-title">Plan Features</h3>
             
@@ -283,31 +283,15 @@ export default function CommunityPlanInfo() {
         </div>
 
         {/* Quick Actions */}
-        <div className="card bg-base-200 shadow-md">
+        <div className="card bg-base-200 shadow-md w-full">
           <div className="card-body">
             <h3 className="card-title">Quick Actions</h3>
             
             <div className="space-y-3">
               {!subscriptionActive && (
                 <div className="space-y-2">
-                  {trialActive ? (
-                    <TrialConversionButton
-                      communityId={planInfo?._id}
-                      communitySlug={slug}
-                      daysRemaining={daysRemaining}
-                      size="md"
-                      showFeatures={false}
-                      context="settings"
-                      onSuccess={(subscription) => {
-                        console.log('Subscription activated:', subscription);
-                        refreshBillingData();
-                      }}
-                      onError={(error) => {
-                        console.error('Subscription error:', error);
-                        setLocalError(error);
-                      }}
-                    />
-                  ) : (
+                  {trialActive ? 
+                       (
                     <PayNowButton
                       communityId={planInfo?._id}
                       communitySlug={slug}
@@ -325,7 +309,7 @@ export default function CommunityPlanInfo() {
                         setLocalError(error);
                       }}
                     />
-                  )}
+                  ):("nothing")}
 
                   <div className="text-center">
                     <a

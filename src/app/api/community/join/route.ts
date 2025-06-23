@@ -110,6 +110,7 @@ export async function POST(req: Request) {
       userId: community.admin,
       type: "join-request",
       title: "New Join Request",
+      message: `${username} has requested to join your community.`,
       content: `${username} has requested to join your community.`,
       sourceId: community._id,
       sourceType: "community",

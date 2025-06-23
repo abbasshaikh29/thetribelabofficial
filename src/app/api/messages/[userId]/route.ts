@@ -4,6 +4,7 @@ import { dbconnect } from "@/lib/db";
 import { Message } from "@/models/Message";
 import { Conversation } from "@/models/Conversation";
 import mongoose from "mongoose";
+import { User } from "@/models/User";
 
 // Get messages between current user and specified user
 export async function GET(

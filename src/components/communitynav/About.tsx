@@ -5,8 +5,6 @@ import type { ICommunity } from "@/models/Community";
 import { IUser } from "@/models/User";
 import { useSession } from "next-auth/react";
 import { useSettingsModal } from "@/components/modals/SettingsModalProvider";
-import CommunityJoinForm from "../CommunityJoinForm";
-import Link from "next/link";
 import {
   Users,
   User,
@@ -133,6 +131,11 @@ function About({ slug }: AboutProps) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Derived data for convenient access inside this component
+  const community = communityData.community as ICommunity;
+  const members = community?.members ?? [];
+  const isAdmin = session?.user?.id === community?.admin;
+
   const fetchData = async () => {
     try {
       const data = await getCommunity(slug);
@@ -175,57 +178,32 @@ function About({ slug }: AboutProps) {
 
   useEffect(() => {
     fetchData();
-
-    // Add a refresh interval to keep the data updated
-    const refreshInterval = setInterval(() => {
-      fetchData();
-    }, 5000); // Refresh every 5 seconds
-
-    return () => clearInterval(refreshInterval);
   }, [slug]);
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const handleFollow = async () => {
+    if (!session?.user?.id || !community?._id) {
+      return;
+    }
 
-  if (error) {
+    // TODO: implement follow / unfollow logic
+  };
+
+  // Guard against loading / error states to avoid null reference errors
+  if (loading) {
     return (
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title text-error">Error</h2>
-          <p>{error}</p>
-          <div className="card-actions justify-end mt-4">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => (window.location.href = "/")}
-            >
-              Go Home
-            </button>
-          </div>
-        </div>
+      <div className="flex justify-center items-center h-40">
+        <span className="loading loading-spinner loading-lg text-primary" />
       </div>
     );
   }
 
-  if (!communityData.community) {
-    return <div>Community not found</div>;
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>;
   }
 
-  // Add proper checks for community data
-  const community = communityData.community;
-  const members = community.members || [];
-  const adminQuestions = community.adminQuestions || [];
-  const isAdmin = session?.user?.id === community.admin;
-  const isMember = members.includes(session?.user?.id || "");
-
-  // Log community data for debugging
-  console.log("Rendering community data:", {
-    name: community.name,
-    isPrivate: community.isPrivate,
-    price: community.price,
-    currency: community.currency,
-  });
+  if (!community) {
+    return <div className="p-4">Community not found.</div>;
+  }
 
   return (
     <div className="m-3 sm:m-6 md:m-8 flex flex-col gap-3 bg-base-300 p-4 sm:p-6 rounded-md">
@@ -260,16 +238,22 @@ function About({ slug }: AboutProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <img
-            src={communityData.admin?.profileImage || ""}
-            alt={communityData.admin?.username || ""}
-            className="w-6 h-6 rounded-full"
-          />
+          {communityData.admin?.profileImage ? (
+            <img
+              src={communityData.admin.profileImage}
+              alt={communityData.admin?.username || "avatar"}
+              className="w-6 h-6 rounded-full"
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-base-200 flex items-center justify-center text-xs font-semibold">
+              {communityData.admin?.username?.charAt(0)?.toUpperCase() || "?"}
+            </div>
+          )}
           
           <span className="text-sm">By</span>
           <span className="font-medium">
             {communityData.admin?.username ||
-              communityData.community.createdBy ||
+              communityData.community?.createdBy ||
               "Unknown"}
           </span>
         </div>
@@ -327,21 +311,6 @@ function About({ slug }: AboutProps) {
           >
             Go to Admin Panel
           </button>
-        </div>
-      )}
-
-      {!isMember && !isAdmin && (
-        <div className="mt-4 sm:mt-6">
-          <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">
-            Join Community
-          </h2>
-          <CommunityJoinForm
-            communityId={community._id?.toString() || ""}
-            communitySlug={slug}
-            communityName={community.name}
-            questions={adminQuestions}
-            onSuccess={fetchData}
-          />
         </div>
       )}
     </div>

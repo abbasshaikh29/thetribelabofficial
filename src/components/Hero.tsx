@@ -1,12 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import RotatingText from "./RotatingText";
+import CircularText from "./CircularText";
 
 function Hero() {
   const animatedWords = ["Empire", "Tribe", "Community", "Group"];
-  const [wordIndex, setWordIndex] = useState(0);
-  const [displayedText, setDisplayedText] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,36 +22,6 @@ function Hero() {
       window.removeEventListener("theme-change", detectTheme);
     };
   }, []);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    const currentWord = animatedWords[wordIndex];
-
-    const handleType = () => {
-      setDisplayedText((prev) => currentWord.substring(0, prev.length + 1));
-      if (displayedText.length === currentWord.length) {
-        setIsDeleting(true);
-        timer = setTimeout(() => {}, 1000); // Pause at end of word
-      }
-    };
-
-    const handleDelete = () => {
-      setDisplayedText((prev) => currentWord.substring(0, prev.length - 1));
-      if (displayedText.length === 0) {
-        setIsDeleting(false);
-        setWordIndex((prev) => (prev + 1) % animatedWords.length);
-        timer = setTimeout(() => {}, 500); // Pause before typing next word
-      }
-    };
-
-    if (!isDeleting) {
-      timer = setTimeout(handleType, 150); // Typing speed
-    } else {
-      timer = setTimeout(handleDelete, 100); // Deleting speed
-    }
-
-    return () => clearTimeout(timer);
-  }, [displayedText, isDeleting, wordIndex, animatedWords]);
 
   // Animation variants
   const headerVariants = {
@@ -135,20 +104,35 @@ function Hero() {
     >
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16 relative">
+          <div className="absolute right-[-5rem] top-16">
+            <CircularText
+              text="FOR CREATORS BY CREATORS."
+              spinDuration={10}
+              onHover="goBonkers"
+              radius={100}
+            />
+          </div>
           <h1
             className="text-9xl font-bold uppercase text-center leading-tight font-thunder"
             style={{ color: "var(--text-primary)" }}
           >
-            Monetize Your Audience,
+            Monetize Your Audience
             <br />
-            Build Your <span className="w-auto">{displayedText}</span>
+            <div className="text-8xl flex justify-center items-center">
+              <h2 className="mr-3">Build Your</h2>
+              <div className="w-[10ch] ml-3 flex justify-start">
+                  <RotatingText
+                      texts={animatedWords}
+                      mainClassName="inline-flex items-center text-inherit font-inherit leading-none"
+                      staggerFrom={"last"}
+                      staggerDuration={0.025}
+                      splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1 md:pb-1"
+                      transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                      rotationInterval={5000}
+                  />
+              </div>
+            </div>
           </h1>
-          <h2
-            className="text-5xl font-bold uppercase text-center leading-tight font-thunder"
-            style={{ color: "var(--text-primary)" }}
-          >
-            for creators by creators.
-          </h2>
           <p
             className="text-center font-sans text-xl font-normal mt-4"
             style={{ color: "var(--text-secondary)" }}

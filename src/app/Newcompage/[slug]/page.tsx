@@ -1,4 +1,3 @@
-
 "use client";
 import mongoose from "mongoose";
 import React, { useState, useEffect, Suspense, lazy } from "react";
@@ -185,17 +184,30 @@ export default function HomeIdPage() {
       }
     };
 
-    fetchData();
+    if (slug) {
+      fetchData();
+    }
+  }, [slug]);
 
-    // Set up interval to refresh posts periodically - reduced frequency since we have real-time updates
-    const refreshInterval = setInterval(() => {
-      if (isMember) {
-        fetchPosts();
-      }
-    }, 60000); // Refresh every 60 seconds (reduced from 30 seconds)
+  // Update membership/admin status when both community data and session are available
+  useEffect(() => {
+    if (!community || !session?.user?.id) return;
 
-    return () => clearInterval(refreshInterval);
-  }, [slug, session?.user?.id, isMember]);
+    const membershipStatus = community.members?.includes(session.user.id) || false;
+    setIsMember(membershipStatus);
+
+    const adminStatus = community.admin === session.user.id;
+    const subAdminStatus = community.subAdmins?.includes(session.user.id) || false;
+    setIsAdmin(adminStatus);
+    setIsSubAdmin(subAdminStatus);
+  }, [community, session]);
+
+  // Fetch posts once membership is confirmed
+  useEffect(() => {
+    if (isMember) {
+      fetchPosts();
+    }
+  }, [isMember, slug]);
 
   // Set up real-time listeners for post events
   useEffect(() => {

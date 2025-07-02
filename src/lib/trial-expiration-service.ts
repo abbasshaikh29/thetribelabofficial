@@ -3,7 +3,7 @@ import { Community } from '@/models/Community';
 import { User } from '@/models/User';
 import { TrialHistory } from '@/models/TrialHistory';
 import { createNotification } from './notifications';
-import { sendEmail } from './email';
+import { sendTrialExpiredEmail } from './resend';
 
 /**
  * Process expired trials and suspend communities/users
@@ -190,25 +190,13 @@ async function sendTrialExpiredNotification(trial: any) {
     });
     
     // Send email notification
-    await sendEmail({
-      to: user.email,
-      subject: title,
-      text: message,
-      html: `
-        <h2>${title}</h2>
-        <p>${message}</p>
-        <div style="background-color: #fee; border: 1px solid #fcc; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h3 style="color: #c33; margin-top: 0;">Important Notice</h3>
-          <p><strong>This was your one-time free trial.</strong> You cannot start another trial for this ${trial.trialType}.</p>
-          <p>To continue using premium features, you must subscribe to a paid plan.</p>
-        </div>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.NEXTAUTH_URL}${linkUrl}" 
-             style="background-color: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-            Subscribe Now
-          </a>
-        </p>
-      `
+    await sendTrialExpiredEmail(user.email, {
+      adminName: user.name || user.username,
+      communityName: trial.trialType === 'community' && trial.communityId ?
+        (await Community.findById(trial.communityId))?.name || 'Your Community' :
+        'Your Trial',
+      paymentUrl: `${process.env.NEXTAUTH_URL}${linkUrl}`,
+      trialType: trial.trialType
     });
     
     console.log(`Sent trial expiration notification to user ${trial.userId}`);
@@ -244,28 +232,11 @@ async function sendCommunitySuspensionNotification(community: any, userId: strin
     });
     
     // Send email notification
-    await sendEmail({
-      to: user.email,
-      subject: title,
-      text: message,
-      html: `
-        <h2>${title}</h2>
-        <p>${message}</p>
-        <div style="background-color: #fee; border: 1px solid #fcc; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h3 style="color: #c33; margin-top: 0;">Community Suspended</h3>
-          <ul>
-            <li>Members cannot access your community</li>
-            <li>All community features are disabled</li>
-            <li>Your community data is safe and will be restored upon subscription</li>
-          </ul>
-        </div>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.NEXTAUTH_URL}${linkUrl}" 
-             style="background-color: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-            Reactivate Community
-          </a>
-        </p>
-      `
+    await sendTrialExpiredEmail(user.email, {
+      adminName: user.name || user.username,
+      communityName: community.name,
+      paymentUrl: `${process.env.NEXTAUTH_URL}${linkUrl}`,
+      trialType: 'community'
     });
     
     console.log(`Sent community suspension notification to user ${userId}`);

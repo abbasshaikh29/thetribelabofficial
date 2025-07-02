@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     if (!emailResult.success) {
       console.error(
         "Failed to send verification email:",
-        emailResult.errorMessage
+        emailResult.error
       );
 
       // In development, we can still return success

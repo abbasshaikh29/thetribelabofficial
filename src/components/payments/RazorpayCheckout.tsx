@@ -17,12 +17,6 @@ interface CommunitySubscriptionCheckoutProps {
   disabled?: boolean;
 }
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps> = ({
   communityId,
   communitySlug,

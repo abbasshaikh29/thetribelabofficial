@@ -53,6 +53,9 @@ export interface ICommunity {
   subscriptionStartDate?: Date;
   trialEndDate?: Date;
 
+  // Reference to the platform-level payment gateway this community uses
+  paymentGatewayId?: mongoose.Types.ObjectId;
+
   // Admin-specific trial information
   adminTrialInfo?: {
     activated: boolean;
@@ -103,6 +106,25 @@ const communitySchema = new Schema<ICommunity>({
   ],
   adminQuestions: [{ type: String }],
 
+  // Access settings fields
+  isPrivate: { type: Boolean, default: true },
+  price: { type: Number, default: 0 },
+  currency: {
+    type: String,
+    enum: [
+      "USD", // US Dollar
+      "INR", // Indian Rupee
+      "EUR", // Euro
+      "GBP", // British Pound
+    ],
+    default: "USD",
+  },
+  pricingType: {
+    type: String,
+    enum: ["monthly", "yearly", "one_time"],
+    default: "one_time",
+  },
+
   // Subscription-only fields for community management
   subscriptionPlanId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -121,6 +143,11 @@ const communitySchema = new Schema<ICommunity>({
   paymentDate: { type: Date },
   transactionId: { type: String },
   paymentId: { type: String },
+  paymentGatewayId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "PaymentGateway",
+    required: false,
+  },
   freeTrialActivated: { type: Boolean, default: false },
   freeTrialStartDate: { type: Date },
   freeTrialEndDate: { type: Date },

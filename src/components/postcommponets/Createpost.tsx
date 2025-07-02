@@ -6,6 +6,9 @@ import Image from "next/image";
 import { parseTextWithLinks } from "@/lib/url-utils";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import S3FileUpload from "@/components/S3FileUpload";
+import { useSession } from "next-auth/react";
+import ProfileAvatar from "@/components/ProfileAvatar";
+import { Button as MovingBorderButton } from "@/components/ui/moving-border";
 // Using native HTML dialog for better compatibility
 
 interface PostContent {
@@ -33,6 +36,7 @@ export function CreatePost({
   onPostCreated,
   isAdmin = false,
 }: CreatePostProps) {
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [contents, setContents] = useState<PostContent[]>([]);
@@ -41,6 +45,7 @@ export function CreatePost({
   const [notifyMembers, setNotifyMembers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isS3UploadModalVisible, setIsS3UploadModalVisible] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -250,30 +255,30 @@ export function CreatePost({
   return (
     <>
       {/* Trigger Button */}
-      <div
-        className="rounded-xl w-full p-4 sm:p-6 cursor-pointer transition-all duration-300"
-        style={{
-          backgroundColor: 'var(--card-bg)',
-          border: '1px solid var(--card-border)',
-          boxShadow: 'var(--shadow-md)',
-          transition: 'var(--theme-transition)'
-        }}
+      <MovingBorderButton
+        borderRadius="0.75rem"
+        containerClassName="w-full cursor-pointer p-[2px]"
+        className="w-full p-4 sm:p-6 bg-[var(--card-bg)] border border-[var(--card-border)] shadow-md text-[var(--text-secondary)] hover:shadow-lg transition-all duration-300 flex justify-start"
         onClick={openModal}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-        }}
       >
-        <div className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
-          <span className="bg-gradient-to-r from-amber-400 to-amber-600 text-white p-1 rounded-md mr-2 text-xs">
-            ✏️
-          </span>
-          whats on your mind?
+        <div className="flex items-center gap-3 mb-3  mt-2 sm:mb-4">
+          <div className="flex-shrink-0 pt-1">
+          <ProfileAvatar
+            imageUrl={session?.user?.image || undefined}
+            name={session?.user?.name || undefined}
+            email={session?.user?.email || undefined}
+            size="lg"
+            className="flex-shrink-0"
+          />
+          </div>
+          <div>
+            <div className="text-md sm:text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              What's on your mind?
+            </div>
+            
+          </div>
         </div>
-        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Click to create a new post...</div>
-      </div>
+      </MovingBorderButton>
 
       {/* Native HTML Dialog Modal */}
       <dialog
@@ -337,157 +342,284 @@ export function CreatePost({
 
           {/* Content */}
           <div className="p-4 space-y-2 sm:space-y-4">
-          <input
-            type="text"
-            placeholder="Post title"
-            value={title}
-            className="w-full px-4 py-2 text-sm sm:text-base rounded-lg focus:outline-none transition-all duration-200"
-            style={{
-              backgroundColor: 'var(--input-bg)',
-              border: '1px solid var(--input-border)',
-              color: 'var(--text-primary)',
-              transition: 'var(--theme-transition)'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = 'var(--input-focus)';
-              e.target.style.boxShadow = 'var(--focus-ring)';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = 'var(--input-border)';
-              e.target.style.boxShadow = 'none';
-            }}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setTitle(e.target.value)
-            }
-          />
-          <label htmlFor="imageInput" className="hidden">
-            Image Input
-          </label>
-          <input
-            id="imageInput"
-            type="file"
-            ref={imageInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileUpload(file, "image");
-            }}
-          />
-          <label htmlFor="fileInput" className="hidden">
-            File Input
-          </label>
-          <input
-            id="fileInput"
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileUpload(file, "file");
-            }}
-          />
-
-          {contents.map((content, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg text-xs sm:text-sm transition-colors duration-200"
+            {/* User avatar and name inside modal */}
+            {session?.user && (
+              <div className="flex items-center gap-3 mb-2">
+                <ProfileAvatar
+                  imageUrl={session.user.image || undefined}
+                  name={session.user.name || undefined}
+                  email={session.user.email || undefined}
+                  size="md"
+                />
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {session.user.name || session.user.email}
+                </span>
+              </div>
+            )}
+            <input
+              type="text"
+              placeholder="Post title"
+              value={title}
+              className="w-full px-4 py-2 text-sm sm:text-base rounded-lg focus:outline-none transition-all duration-200"
               style={{
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                boxShadow: 'var(--shadow-sm)',
-                color: 'var(--text-primary)'
+                backgroundColor: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
+                color: 'var(--text-primary)',
+                transition: 'var(--theme-transition)'
               }}
-            >
-              {content.type === "image" ? (
-                <div className="relative w-full">
-                  <Image
-                    src={content.content}
-                    alt=""
-                    width={500}
-                    height={300}
-                    className="max-h-40 sm:max-h-60 object-contain mx-auto"
-                  />
-                </div>
-              ) : content.type === "link" ? (
-                <>
-                  <Link className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="flex-1">{content.content}</span>
-                </>
-              ) : content.type === "file" ? (
-                <>
-                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="flex-1">File uploaded</span>
-                </>
-              ) : (
-                <span className="flex-1">{content.content}</span>
-              )}
-              <button
-                type="button"
-                className="p-1 rounded-full transition-all duration-200"
-                style={{
-                  color: 'var(--brand-warning)',
-                  transition: 'var(--theme-transition)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
-                  e.currentTarget.style.color = 'var(--brand-error)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--brand-warning)';
-                }}
-                onClick={() => handleRemoveContent(index)}
-                title="Remove content"
-                aria-label="Remove content"
-              >
-                <X className="h-3 w-3 sm:h-4 sm:w-4" />
-              </button>
-            </div>
-          ))}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--input-focus)';
+                e.target.style.boxShadow = 'var(--focus-ring)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--input-border)';
+                e.target.style.boxShadow = 'none';
+              }}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setTitle(e.target.value)
+              }
+            />
+            <label htmlFor="imageInput" className="hidden">
+              Image Input
+            </label>
+            <input
+              id="imageInput"
+              type="file"
+              ref={imageInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file, "image");
+              }}
+            />
+            <label htmlFor="fileInput" className="hidden">
+              File Input
+            </label>
+            <input
+              id="fileInput"
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file, "file");
+              }}
+            />
 
-          <div className="space-y-2">
-            <div className="relative">
-              <textarea
-                ref={textareaRef}
-                placeholder="What's on your mind?"
-                value={currentInput}
-                className="w-full px-4 py-3 text-xs sm:text-sm rounded-lg focus:outline-none transition-all duration-200 resize-none"
+            {contents.map((content, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg text-xs sm:text-sm transition-colors duration-200"
                 style={{
-                  backgroundColor: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)',
-                  transition: 'var(--theme-transition)'
+                  backgroundColor: 'var(--card-bg)',
+                  border: '1px solid var(--card-border)',
+                  boxShadow: 'var(--shadow-sm)',
+                  color: 'var(--text-primary)'
                 }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = 'var(--input-focus)';
-                  e.target.style.boxShadow = 'var(--focus-ring)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'var(--input-border)';
-                  e.target.style.boxShadow = 'none';
-                }}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setCurrentInput(e.target.value)
-                }
-                rows={3}
-              />
-              {showEmojiPicker && (
-                <div
-                  className="absolute z-10 bottom-0 right-0 mb-16"
-                  ref={emojiPickerRef}
+              >
+                {content.type === "image" ? (
+                  <div className="relative w-full">
+                    <Image
+                      src={content.content}
+                      alt=""
+                      width={500}
+                      height={300}
+                      className="max-h-40 sm:max-h-60 object-contain mx-auto"
+                    />
+                  </div>
+                ) : content.type === "link" ? (
+                  <>
+                    <Link className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="flex-1">{content.content}</span>
+                  </>
+                ) : content.type === "file" ? (
+                  <>
+                    <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="flex-1">File uploaded</span>
+                  </>
+                ) : (
+                  <span className="flex-1">{content.content}</span>
+                )}
+                <button
+                  type="button"
+                  className="p-1 rounded-full transition-all duration-200"
+                  style={{
+                    color: 'var(--brand-warning)',
+                    transition: 'var(--theme-transition)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                    e.currentTarget.style.color = 'var(--brand-error)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--brand-warning)';
+                  }}
+                  onClick={() => handleRemoveContent(index)}
+                  title="Remove content"
+                  aria-label="Remove content"
                 >
-                  <EmojiPicker
-                    onEmojiClick={handleEmojiClick}
-                    width={280}
-                    height={350}
-                    previewConfig={{ showPreview: false }}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+                  <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                </button>
+              </div>
+            ))}
+
+            <div className="space-y-2">
               <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  placeholder="What's on your mind?"
+                  value={currentInput}
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-lg focus:outline-none transition-all duration-200 resize-none"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)',
+                    transition: 'var(--theme-transition)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--input-focus)';
+                    e.target.style.boxShadow = 'var(--focus-ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'var(--input-border)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setCurrentInput(e.target.value)
+                  }
+                  rows={3}
+                />
+                {showEmojiPicker && (
+                  <div
+                    className="absolute z-10 bottom-0 right-0 mb-16"
+                    ref={emojiPickerRef}
+                  >
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiClick}
+                      width={280}
+                      height={350}
+                      previewConfig={{ showPreview: false }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
+                    style={{
+                      backgroundColor: 'var(--bg-accent)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-color)',
+                      transition: 'var(--theme-transition)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                      e.currentTarget.style.borderColor = 'var(--border-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-accent)';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                      e.currentTarget.style.borderColor = 'var(--border-color)';
+                    }}
+                    onClick={() => {
+                      // Open a modal or dropdown with S3FileUpload
+                      setIsS3UploadModalVisible(true);
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    <span className="hidden xs:inline">Add Image</span>
+                    <span className="xs:hidden">Image</span>
+                  </button>
+
+                  {/* S3 Upload Modal */}
+                  <div
+                    className={`${
+                      isS3UploadModalVisible ? "" : "hidden"
+                    } absolute z-50 top-full left-0 mt-2 p-4 rounded-lg w-64 transition-all duration-200`}
+                    style={{
+                      backgroundColor: 'var(--dropdown-bg)',
+                      border: '1px solid var(--border-color)',
+                      boxShadow: 'var(--shadow-lg)'
+                    }}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Upload Image</h3>
+                      <button
+                        type="button"
+                        className="transition-colors duration-200"
+                        style={{
+                          color: 'var(--text-secondary)',
+                          transition: 'var(--theme-transition)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'var(--text-primary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-secondary)';
+                        }}
+                        onClick={() => setIsS3UploadModalVisible(false)}
+                        aria-label="Close upload modal"
+                        title="Close"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <S3FileUpload
+                      onSuccess={(response) => {
+                        handleS3ImageUploadSuccess(response);
+                        setIsS3UploadModalVisible(false);
+                      }}
+                      fileType="image"
+                      uploadType="post-image"
+                      entityId={communitySlug}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
+                  style={{
+                    backgroundColor: 'var(--bg-accent)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-color)',
+                    transition: 'var(--theme-transition)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                    e.currentTarget.style.borderColor = 'var(--border-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-accent)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                  }}
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  title="Add emoji"
+                  aria-label="Add emoji"
+                >
+                  <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Add Emoji</span>
+                  <span className="xs:hidden">Emoji</span>
+                </button>
                 <button
                   type="button"
                   className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
@@ -508,255 +640,135 @@ export function CreatePost({
                     e.currentTarget.style.borderColor = 'var(--border-color)';
                   }}
                   onClick={() => {
-                    // Open a modal or dropdown with S3FileUpload
-                    document
-                      .getElementById("s3-upload-modal")
-                      ?.classList.remove("hidden");
+                    if (currentInput.trim()) {
+                      setContents([
+                        ...contents,
+                        { type: "link", content: currentInput },
+                      ]);
+                      setCurrentInput("");
+                    }
                   }}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3.5 w-3.5 sm:h-4 sm:w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                  <span className="hidden xs:inline">Add Image</span>
-                  <span className="xs:hidden">Image</span>
+                  <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Add Link</span>
+                  <span className="xs:hidden">Link</span>
                 </button>
-
-                {/* S3 Upload Modal */}
-                <div
-                  id="s3-upload-modal"
-                  className="hidden absolute z-50 top-full left-0 mt-2 p-4 rounded-lg w-64 transition-all duration-200"
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
                   style={{
-                    backgroundColor: 'var(--dropdown-bg)',
+                    backgroundColor: 'var(--bg-accent)',
+                    color: 'var(--text-secondary)',
                     border: '1px solid var(--border-color)',
-                    boxShadow: 'var(--shadow-lg)'
+                    transition: 'var(--theme-transition)'
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                    e.currentTarget.style.borderColor = 'var(--border-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-accent)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Upload Image</h3>
-                    <button
-                      type="button"
-                      className="transition-colors duration-200"
-                      style={{
-                        color: 'var(--text-secondary)',
-                        transition: 'var(--theme-transition)'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = 'var(--text-primary)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = 'var(--text-secondary)';
-                      }}
-                      onClick={() =>
-                        document
-                          .getElementById("s3-upload-modal")
-                          ?.classList.add("hidden")
-                      }
-                      aria-label="Close upload modal"
-                      title="Close"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <S3FileUpload
-                    onSuccess={(response) => {
-                      handleS3ImageUploadSuccess(response);
-                      document
-                        .getElementById("s3-upload-modal")
-                        ?.classList.add("hidden");
-                    }}
-                    fileType="image"
-                    uploadType="post-image"
-                    entityId={communitySlug}
-                  />
-                </div>
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Add File</span>
+                  <span className="xs:hidden">File</span>
+                </button>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              className="flex items-center gap-3 p-4 transition-colors duration-300"
+              style={{ borderTop: '1px solid var(--border-color)' }}
+            >
+              {isAdmin && (
+                <div className="flex-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded transition-colors duration-200"
+                      style={{
+                        accentColor: 'var(--brand-primary)',
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--input-border)'
+                      }}
+                      checked={notifyMembers}
+                      onChange={(e) => setNotifyMembers(e.target.checked)}
+                    />
+                    <span className="flex items-center text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                      Notify community members
+                    </span>
+                  </label>
+                </div>
+              )}
+              {submitError && (
+                <div className="text-xs mr-2" style={{ color: 'var(--brand-error)' }}>{submitError}</div>
+              )}
               <button
                 type="button"
-                className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
+                onClick={handleSubmit}
+                className={`py-2 px-4 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
+                  isSubmitting ? "cursor-wait" : ""
+                }`}
                 style={{
-                  backgroundColor: 'var(--bg-accent)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-color)',
+                  background: isSubmitting
+                    ? 'var(--bg-accent)'
+                    : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: 'white',
+                  boxShadow: 'var(--shadow-md)',
+                  opacity: isSubmitting ? 0.7 : 1,
                   transition: 'var(--theme-transition)'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                  e.currentTarget.style.borderColor = 'var(--border-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-accent)';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                  e.currentTarget.style.borderColor = 'var(--border-color)';
-                }}
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                title="Add emoji"
-                aria-label="Add emoji"
-              >
-                <Smile className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Add Emoji</span>
-                <span className="xs:hidden">Emoji</span>
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
-                style={{
-                  backgroundColor: 'var(--bg-accent)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-color)',
-                  transition: 'var(--theme-transition)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                  e.currentTarget.style.borderColor = 'var(--border-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-accent)';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                  e.currentTarget.style.borderColor = 'var(--border-color)';
-                }}
-                onClick={() => {
-                  if (currentInput.trim()) {
-                    setContents([
-                      ...contents,
-                      { type: "link", content: currentInput },
-                    ]);
-                    setCurrentInput("");
+                  if (!isSubmitting) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
                   }
                 }}
-              >
-                <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Add Link</span>
-                <span className="xs:hidden">Link</span>
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1.5 transition-all duration-200"
-                style={{
-                  backgroundColor: 'var(--bg-accent)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-color)',
-                  transition: 'var(--theme-transition)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                  e.currentTarget.style.borderColor = 'var(--border-hover)';
-                }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-accent)';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  if (!isSubmitting) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                  }
                 }}
-                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting || (!title.trim() && contents.length === 0)}
               >
-                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Add File</span>
-                <span className="xs:hidden">File</span>
+                {isSubmitting ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  "Post"
+                )}
               </button>
             </div>
           </div>
-
-          {/* Footer */}
-          <div
-            className="flex items-center gap-3 p-4 transition-colors duration-300"
-            style={{ borderTop: '1px solid var(--border-color)' }}
-          >
-            {isAdmin && (
-              <div className="flex-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded transition-colors duration-200"
-                    style={{
-                      accentColor: 'var(--brand-primary)',
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: 'var(--input-border)'
-                    }}
-                    checked={notifyMembers}
-                    onChange={(e) => setNotifyMembers(e.target.checked)}
-                  />
-                  <span className="flex items-center text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
-                    Notify community members
-                  </span>
-                </label>
-              </div>
-            )}
-            {submitError && (
-              <div className="text-xs mr-2" style={{ color: 'var(--brand-error)' }}>{submitError}</div>
-            )}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className={`py-2 px-4 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
-                isSubmitting ? "cursor-wait" : ""
-              }`}
-              style={{
-                background: isSubmitting
-                  ? 'var(--bg-accent)'
-                  : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                color: 'white',
-                boxShadow: 'var(--shadow-md)',
-                opacity: isSubmitting ? 0.7 : 1,
-                transition: 'var(--theme-transition)'
-              }}
-              onMouseEnter={(e) => {
-                if (!isSubmitting) {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
-                  e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSubmitting) {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                }
-              }}
-              disabled={isSubmitting || (!title.trim() && contents.length === 0)}
-            >
-              {isSubmitting ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Creating...
-                </>
-              ) : (
-                "Post"
-              )}
-            </button>
-          </div>
-        </div>
         </div>
       </dialog>
     </>

@@ -4,7 +4,8 @@ import { Community } from '@/models/Community';
 import { TrialHistory } from '@/models/TrialHistory';
 import { Subscription } from '@/models/Subscription';
 import { createNotification } from './notifications';
-import { sendEmail } from './email';
+import { sendTrialWelcomeEmail } from './resend';
+import { fetchSubscription } from './razorpay';
 
 /**
  * Helper function to validate if a date is valid and not Unix epoch
@@ -280,16 +281,13 @@ async function sendTrialWelcomeNotification(
     });
 
     // Send email notification
-    await sendEmail({
-      to: user.email,
-      subject: title,
-      text: message,
-      html: `
-        <h2>${title}</h2>
-        <p>${message}</p>
-        <p><strong>Important:</strong> This is a one-time trial. After expiration, you'll need to subscribe to continue using premium features.</p>
-        <p>Manage your subscription: <a href="${process.env.NEXTAUTH_URL}${linkUrl}">Click here</a></p>
-      `
+    await sendTrialWelcomeEmail(user.email, {
+      userName: user.name || user.username,
+      communityName: trialType === 'community' && communityId ?
+        (await Community.findById(communityId))?.name : undefined,
+      trialType,
+      trialEndDate,
+      paymentUrl: `${process.env.NEXTAUTH_URL}${linkUrl}`
     });
   } catch (error) {
     console.error('Error sending trial welcome notification:', error);
@@ -364,10 +362,19 @@ export async function clearTrialState(communityId: string, userId: string) {
  */
 export async function getCommunityStatus(communityId: string) {
   try {
+    if (!communityId) {
+      console.error('getCommunityStatus called without communityId');
+      return {
+        found: false,
+        error: "Community ID is required"
+      };
+    }
+
     await dbconnect();
 
     const community = await Community.findById(communityId);
     if (!community) {
+      console.error('Community not found for ID:', communityId);
       return {
         found: false,
         error: "Community not found"
@@ -394,45 +401,30 @@ export async function getCommunityStatus(communityId: string) {
       }
     } else if (hasActiveTrialStatus) {
       status = 'active_trial';
-      // Determine which trial end date to use
       if (community.adminTrialInfo?.endDate) {
         endDate = new Date(community.adminTrialInfo.endDate);
-      } else if (community.subscriptionEndDate && community.paymentStatus === 'trial') {
-        endDate = new Date(community.subscriptionEndDate);
-      }
-
-      if (endDate) {
         const diffTime = endDate.getTime() - now.getTime();
         daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (daysRemaining <= 0) {
-          status = 'expired';
-        }
       }
     } else if (community.suspended) {
       status = 'suspended';
     } else {
-      // Check if trial/subscription has expired
-      const hasExpiredTrial = community.adminTrialInfo?.endDate &&
-        new Date(community.adminTrialInfo.endDate) <= now;
-      const hasExpiredSubscription = community.subscriptionEndDate &&
-        new Date(community.subscriptionEndDate) <= now;
-
-      if (hasExpiredTrial || hasExpiredSubscription) {
-        status = 'expired';
-      }
+      status = 'expired';
     }
 
     // Get subscription details if available
     let subscriptionDetails = null;
     if (community.subscriptionId) {
       try {
-        subscriptionDetails = await Subscription.findOne({
-          razorpaySubscriptionId: community.subscriptionId
-        });
-      } catch (error) {
-        console.error('Error fetching subscription details:', error);
+        subscriptionDetails = await fetchSubscription(community.subscriptionId);
+      } catch (err) {
+        console.error('Error fetching subscription details:', err);
+        // Don't throw, just continue without subscription details
       }
     }
+
+    // Ensure all dates are valid
+    const isValidDate = (date: any) => date instanceof Date && !isNaN(date.getTime());
 
     return {
       found: true,
@@ -442,7 +434,12 @@ export async function getCommunityStatus(communityId: string) {
         slug: community.slug,
         admin: community.admin,
         paymentStatus: community.paymentStatus,
-        adminTrialInfo: community.adminTrialInfo,
+        adminTrialInfo: {
+          activated: community.adminTrialInfo?.activated || false,
+          startDate: isValidDate(community.adminTrialInfo?.startDate) ? community.adminTrialInfo?.startDate : null,
+          endDate: isValidDate(community.adminTrialInfo?.endDate) ? community.adminTrialInfo?.endDate : null,
+          hasUsedTrial: community.adminTrialInfo?.hasUsedTrial || false
+        },
         freeTrialActivated: community.freeTrialActivated,
         subscriptionEndDate: isValidDate(community.subscriptionEndDate) ? community.subscriptionEndDate : null,
         subscriptionId: community.subscriptionId,
@@ -460,7 +457,7 @@ export async function getCommunityStatus(communityId: string) {
     console.error('Error getting community status:', error);
     return {
       found: false,
-      error: "Failed to get community status"
+      error: error instanceof Error ? error.message : "Failed to get community status"
     };
   }
 }

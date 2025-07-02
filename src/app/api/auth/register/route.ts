@@ -92,11 +92,12 @@ export async function POST(request: NextRequest) {
       if (!emailResult.success) {
         // Resend rate limit or other errors
         if (
-          emailResult.errorCode === "429" ||
-          emailResult.errorCode === "rate_limit_exceeded"
+          emailResult.error === "429" ||
+          emailResult.error === "rate_limit_exceeded"
         ) {
           console.warn(
-            "Resend rate limit reached. Consider upgrading your plan or implementing rate limiting."
+            "Rate limit or 429 error when sending verification email:",
+            emailResult.error
           );
 
           // In development, we can auto-verify for testing
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
           }
         }
         // Missing API key
-        else if (emailResult.errorCode === "MISSING_API_KEY") {
+        else if (emailResult.error === "MISSING_API_KEY") {
           console.error("Resend API key is not configured properly");
 
           // In development, auto-verify for testing
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
         }
         // Log any other errors
         else {
-          console.error("Email sending error:", emailResult.errorMessage);
+          console.error("Email sending error:", emailResult.error);
 
           // In development, auto-verify regardless of error
           if (process.env.NODE_ENV === "development") {

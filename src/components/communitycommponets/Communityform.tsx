@@ -137,7 +137,6 @@ export default function CommunityCreateForm() {
       }
 
       // If we get here, all validations passed
-      try {
       const communityData = {
         ...dataToUse,
         createdAt: new Date(),
@@ -147,32 +146,30 @@ export default function CommunityCreateForm() {
         joinRequests: [],
       };
 
-          const createdCommunity = await apiClient.createCommunity(communityData);
-          showNotification("Community created successfully! Redirecting to billing...", "success");
-          router.push(`/billing/${createdCommunity.slug}`);
+      const createdCommunity = await apiClient.createCommunity(communityData);
 
-          // Reset form
-          setValue("name", "");
-          setValue("description", "");
-          setValue("createdAt", undefined);
-          setCreateProgress(0);
-          setShowCaptcha(false);
-          setFormData(null);
-          setIsCaptchaVerified(false);
-        } catch (error) {
-          console.error('Error creating community:', error);
-          showNotification(
-            error instanceof Error ? error.message : "Failed to create community",
-            "error"
-          );
-        }
-      } catch (error) {
-        console.error('Error in CAPTCHA verification:', error);
-        showNotification(
-          error instanceof Error ? error.message : "Verification failed. Please try again.",
-          "error"
-        );
+      if (!createdCommunity) {
+        throw new Error('No response received from server');
       }
+
+      showNotification("Community created successfully! Redirecting to billing...", "success");
+      router.push(`/billing/${createdCommunity.slug}`);
+
+      // Reset form
+      setValue("name", "");
+      setValue("description", "");
+      setValue("createdAt", undefined);
+      setCreateProgress(0);
+      setShowCaptcha(false);
+      setFormData(null);
+      setIsCaptchaVerified(false);
+    } catch (error) {
+      console.error('Error in community creation process:', error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      showNotification(errorMessage, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

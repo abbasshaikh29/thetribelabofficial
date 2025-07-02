@@ -841,7 +841,7 @@ export default function PostCard({
           borderColor: 'var(--border-color)'
         }}
       >
-        <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
+        <CardHeader className="flex flex-row items-center justify-between py-2 px-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4">
               <ProfileAvatar
@@ -889,7 +889,7 @@ export default function PostCard({
 
         <CardContent
           onClick={() => setIsDialogOpen(true)}
-          className="px-4 py-2"
+          className="px-4 py-1"
         >
           <div className="flex">
             <div className="w-3/4">

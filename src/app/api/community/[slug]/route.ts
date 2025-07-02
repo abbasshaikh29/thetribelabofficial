@@ -14,6 +14,12 @@ interface CommunityType {
   admin: string;
   subAdmins?: string[];
   adminQuestions?: string[];
+  joinRequests?: {
+    userId: string;
+    status: "pending" | "approved" | "rejected";
+    answers: string[];
+    createdAt: Date;
+  }[];
   isPrivate?: boolean;
   price?: number;
   currency?: string;
@@ -73,7 +79,7 @@ export async function GET(
       slug,
     })
       .select(
-        "_id name slug description bannerImageurl iconImageUrl members admin subAdmins adminQuestions isPrivate price currency paymentEnabled subscriptionRequired adminTrialInfo paymentStatus subscriptionEndDate freeTrialActivated"
+        "_id name slug description bannerImageurl iconImageUrl members admin subAdmins adminQuestions isPrivate price currency paymentEnabled subscriptionRequired adminTrialInfo paymentStatus subscriptionEndDate freeTrialActivated joinRequests"
       )
       .lean<{
         _id: mongoose.Types.ObjectId;
@@ -86,6 +92,12 @@ export async function GET(
         admin: string;
         subAdmins?: string[];
         adminQuestions?: string[];
+        joinRequests?: {
+          userId: string;
+          status: "pending" | "approved" | "rejected";
+          answers: string[];
+          createdAt: Date;
+        }[];
         isPrivate?: boolean;
         price?: number;
         currency?: string;
@@ -132,6 +144,7 @@ export async function GET(
       admin: communityDoc.admin || "",
       subAdmins: communityDoc.subAdmins || [],
       adminQuestions: communityDoc.adminQuestions || [],
+      joinRequests: communityDoc.joinRequests || [],
       isPrivate:
         communityDoc.isPrivate !== undefined ? communityDoc.isPrivate : true,
       price: communityDoc.price || 0,

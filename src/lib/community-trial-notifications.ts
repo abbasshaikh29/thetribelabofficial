@@ -3,7 +3,7 @@ import { CommunitySubscription } from '@/models/Subscription';
 import { Community } from '@/models/Community';
 import { User } from '@/models/User';
 import { createNotification } from './notifications';
-import { sendEmail } from './email';
+import { sendTrialReminderEmail } from './resend';
 
 // Days before trial expiration when we send reminders
 const TRIAL_REMINDER_DAYS = [7, 3, 2, 1];
@@ -149,11 +149,12 @@ export class CommunityTrialNotificationService {
       });
       
       // Send email notification
-      const emailResult = await sendEmail({
-        to: admin.email,
-        subject: notificationContent.emailSubject,
-        text: notificationContent.emailText,
-        html: notificationContent.emailHtml
+      const emailResult = await sendTrialReminderEmail(admin.email, {
+        adminName: admin.name || admin.email,
+        communityName: community.name,
+        daysRemaining,
+        trialEndDate: new Date(subscription.trialEndDate),
+        paymentUrl: `/billing/${communitySlug}`
       });
       
       // Record the reminder in subscription

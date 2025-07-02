@@ -26,6 +26,43 @@ export async function POST(request: NextRequest) {
       notes = {}
     } = await request.json();
 
+    // Validate communityId format and find community
+    let community;
+    if (communityId) {
+      try {
+        // First check if it's a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(communityId)) {
+          return NextResponse.json(
+            { error: "Invalid community ID format" },
+            { status: 400 }
+          );
+        }
+
+        // Then try to find the community
+        community = await Community.findById(communityId);
+        if (!community) {
+          return NextResponse.json(
+            { error: "Community not found" },
+            { status: 404 }
+          );
+        }
+
+        // Verify the user is the admin
+        if (community.admin.toString() !== session.user.id) {
+          return NextResponse.json(
+            { error: "Only community admin can create subscription" },
+            { status: 403 }
+          );
+        }
+      } catch (error) {
+        console.error("Error validating community:", error);
+        return NextResponse.json(
+          { error: "Failed to validate community" },
+          { status: 500 }
+        );
+      }
+    }
+
     // Single standardized plan - $29/month processed as ₹2,400
     // Note: We handle trial period in our application logic, not in Razorpay plan
     const standardPlan = {
@@ -58,10 +95,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if admin already has an active subscription for this community
-    if (communityId) {
+    if (community) {
       const existingSubscription = await CommunitySubscription.findOne({
         adminId: adminId,
-        communityId: new mongoose.Types.ObjectId(communityId),
+        communityId: community._id,
         status: { $in: ["active", "trial", "past_due"] }
       });
 
@@ -141,13 +178,21 @@ export async function POST(request: NextRequest) {
       chargeAt: chargeAt.toISOString()
     });
 
+    // Before saving subscription, ensure a valid community exists
+    if (!community) {
+      return NextResponse.json(
+        { error: "A valid community ID is required to create subscription" },
+        { status: 400 }
+      );
+    }
+
     // Save subscription to database
     const subscription = new CommunitySubscription({
       razorpaySubscriptionId: razorpaySubscription.id,
       razorpayPlanId: RAZORPAY_PLAN_ID,
       razorpayCustomerId: customerId,
       adminId: adminId,
-      communityId: communityId ? new mongoose.Types.ObjectId(communityId) : new mongoose.Types.ObjectId(),
+      communityId: community._id,
       status: razorpaySubscription.status,
       currentStart,
       currentEnd,
@@ -183,8 +228,8 @@ export async function POST(request: NextRequest) {
       "communityAdminSubscription.trialEndDate": trialEndDate
     });
 
-    // If communityId provided, update community subscription status
-    if (communityId) {
+    // If community exists, update its subscription status
+    if (community) {
       // Calculate proper subscription end date (30 days from start for monthly subscriptions)
       const subscriptionEndDate = new Date(currentStart);
       subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30); // 30 days from start
@@ -195,11 +240,11 @@ export async function POST(request: NextRequest) {
         trialEndDate: trialEndDate
       });
 
-      await Community.findByIdAndUpdate(communityId, {
+      await Community.findByIdAndUpdate(community._id, {
         subscriptionStatus: razorpaySubscription.status === "created" ? "trial" : razorpaySubscription.status,
         subscriptionId: razorpaySubscription.id,
         subscriptionStartDate: currentStart,
-        subscriptionEndDate: subscriptionEndDate, // Use calculated end date, not Razorpay's currentEnd
+        subscriptionEndDate: subscriptionEndDate,
         trialEndDate,
         paymentStatus: razorpaySubscription.status === "active" ? "paid" : "trial"
       });

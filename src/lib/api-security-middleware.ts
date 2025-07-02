@@ -156,16 +156,17 @@ export const csrfProtection = (req: NextRequest): NextResponse | null => {
   const host = req.headers.get('host');
 
   // Check if request is from same origin
-  const allowedOrigins = [
+  const allowedOrigins: string[] = [
     `https://${host}`,
     `http://${host}`,
-    process.env.NEXTAUTH_URL
-  ].filter(Boolean);
+    process.env.NEXTAUTH_URL || ""
+  ].filter(Boolean) as string[];
 
-  const isValidOrigin = origin && allowedOrigins.includes(origin);
-  const isValidReferer = referer && allowedOrigins.some(allowed => 
-    referer.startsWith(allowed)
-  );
+  const isValidOrigin = typeof origin === "string" && allowedOrigins.includes(origin);
+  let isValidReferer = false;
+  if (typeof referer === "string") {
+    isValidReferer = allowedOrigins.some(allowed => referer.startsWith(allowed));
+  }
 
   if (!isValidOrigin && !isValidReferer) {
     logSecurityEvent({

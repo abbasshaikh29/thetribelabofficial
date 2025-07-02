@@ -50,8 +50,8 @@ class ApiClient {
     return response.json();
   }
 
-  async getcommunities(page: number = 1, limit: number = 4) {
-    // Using limit=30 for pagination
+  async getcommunities(page: number = 1, limit: number = 30) {
+    // limit defaults to 30 per page to show more communities
     return this.fetch<PaginationResponse<ICommunity>>(
       `/community?page=${page}&limit=${limit}`
     );

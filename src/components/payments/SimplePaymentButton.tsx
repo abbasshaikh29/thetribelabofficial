@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import type { RazorpayOptions, RazorpayPaymentResponse } from "@/types/razorpay";
 
 interface SimplePaymentButtonProps {
   communityId?: string;
@@ -11,12 +12,7 @@ interface SimplePaymentButtonProps {
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
   className?: string;
-}
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
+  disabled?: boolean;
 }
 
 const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
@@ -25,7 +21,8 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
   buttonText = "Pay Now ($29/month)",
   onSuccess,
   onError,
-  className = ""
+  className = "",
+  disabled = false
 }) => {
   const { data: session } = useSession();
   const router = useRouter();
@@ -108,18 +105,18 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
 
       // If subscription requires authentication, open Razorpay checkout
       if (razorpaySubscription.status === "created" && shortUrl) {
-        const options = {
+        const options: RazorpayOptions = {
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           subscription_id: razorpaySubscription.id,
           name: "TheTribeLab",
           description: "Community Management Plan - $29/month",
-          handler: async function (response: any) {
+          handler: async function (response: RazorpayPaymentResponse) {
             console.log("Payment completed, verifying...");
 
             await verifyPayment(
-              response.razorpay_subscription_id,
-              response.razorpay_payment_id,
-              response.razorpay_signature
+              response.razorpay_subscription_id!,
+              response.razorpay_payment_id!,
+              response.razorpay_signature!
             );
           },
           prefill: {
@@ -217,8 +214,8 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
       <button
         type="button"
         onClick={handlePayment}
-        disabled={isLoading || !isScriptLoaded}
-        className={`${className} ${isLoading || !isScriptLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={disabled || isLoading || !isScriptLoaded}
+        className={`${className} ${disabled || isLoading || !isScriptLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {isLoading ? (
           <div className="flex items-center justify-center">

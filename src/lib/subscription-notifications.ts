@@ -1,5 +1,10 @@
 import { Subscription } from "@/models/Subscription";
 import { User } from "@/models/User";
+import {
+  sendRenewalReminderEmail,
+  sendPaymentFailedEmail,
+  sendSubscriptionCancelledEmail
+} from "./resend";
 
 interface NotificationData {
   userId: string;
@@ -48,19 +53,13 @@ export class SubscriptionNotificationService {
       const communityName = subscription.communityId?.name || "Your Community";
 
       // Send email notification
-      await this.sendEmailNotification({
-        to: adminUser.email,
-        subject: `${communityName} subscription renews in ${daysUntilRenewal} days`,
-        template: "admin_renewal_reminder",
-        data: {
-          adminName: adminUser.name || adminUser.email,
-          communityName,
-          subscriptionAmount: subscription.amount,
-          currency: subscription.currency,
-          renewalDate: subscription.currentEnd,
-          daysUntilRenewal,
-          isAdmin: true
-        }
+      await sendRenewalReminderEmail(adminUser.email, {
+        adminName: adminUser.name || adminUser.email,
+        communityName,
+        subscriptionAmount: subscription.amount,
+        currency: subscription.currency,
+        renewalDate: subscription.currentEnd,
+        daysUntilRenewal
       });
 
       // Record notification
@@ -102,22 +101,16 @@ export class SubscriptionNotificationService {
       const communityName = subscription.communityId?.name || "Your Community";
 
       // Send email notification
-      await this.sendEmailNotification({
-        to: adminUser.email,
-        subject: `${communityName} - Payment Failed - Immediate Action Required`,
-        template: "admin_payment_failed",
-        data: {
-          adminName: adminUser.name || adminUser.email,
-          communityName,
-          subscriptionAmount: subscription.amount,
-          currency: subscription.currency,
-          failureReason: failureReason || "Payment could not be processed",
-          retryAttempts: subscription.retryAttempts,
-          maxRetryAttempts: subscription.maxRetryAttempts,
-          nextRetryDate: subscription.nextRetryAt,
-          isAdmin: true,
-          communityAtRisk: subscription.retryAttempts >= subscription.maxRetryAttempts - 1
-        }
+      await sendPaymentFailedEmail(adminUser.email, {
+        adminName: adminUser.name || adminUser.email,
+        communityName,
+        subscriptionAmount: subscription.amount,
+        currency: subscription.currency,
+        failureReason: failureReason || "Payment could not be processed",
+        retryAttempts: subscription.retryAttempts,
+        maxRetryAttempts: subscription.maxRetryAttempts,
+        nextRetryDate: subscription.nextRetryAt,
+        paymentUrl: `${process.env.NEXTAUTH_URL}/billing/${subscription.communityId?.slug || subscription.communityId?._id}`
       });
 
       // Record notification
@@ -235,142 +228,64 @@ export class SubscriptionNotificationService {
   }
 
   /**
-   * Send email notification (implement based on your email service)
+   * Send subscription cancellation notification
    */
-  private static async sendEmailNotification(params: {
-    to: string;
-    subject: string;
-    template: string;
-    data: any;
-  }) {
-    // Implement your email sending logic here
-    // This could use Nodemailer, SendGrid, AWS SES, etc.
-    
-    console.log("Sending email notification:", {
-      to: params.to,
-      subject: params.subject,
-      template: params.template
-    });
+  static async sendCancellationNotification(
+    subscriptionId: string,
+    cancellationReason?: string
+  ) {
+    try {
+      const subscription = await Subscription.findOne({
+        razorpaySubscriptionId: subscriptionId
+      })
+        .populate('userId')
+        .populate('communityId');
 
-    // Example implementation with Nodemailer (uncomment and configure)
-    /*
-    const nodemailer = require('nodemailer');
-    
-    const transporter = nodemailer.createTransporter({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+      if (!subscription || !subscription.userId || !subscription.communityId) {
+        console.error(
+          "Subscription, user, or community not found for cancellation notification for razorpaySubscriptionId:",
+          subscriptionId
+        );
+        return;
+      }
 
-    const emailContent = this.generateEmailContent(params.template, params.data);
+      const adminUser = subscription.userId as any;
+      const communityName = subscription.communityId?.name || "Your Community";
 
-    await transporter.sendMail({
-      from: process.env.SMTP_USER,
-      to: params.to,
-      subject: params.subject,
-      html: emailContent,
-    });
-    */
+      await sendSubscriptionCancelledEmail(adminUser.email, {
+        adminName: adminUser.name || adminUser.email,
+        communityName,
+        cancellationDate: new Date(),
+        accessEndDate: subscription.currentEnd
+      });
+
+      subscription.notificationsSent.push({
+        type: "subscription_cancelled_admin",
+        sentAt: new Date(),
+        channel: "email"
+      });
+
+      await subscription.save();
+
+      console.log(
+        `Cancellation notification sent to admin for subscription ${subscriptionId}`
+      );
+    } catch (error) {
+      console.error("Error sending cancellation notification:", error);
+    }
   }
 
   /**
-   * Generate email content based on template
+   * Send a generic email notification (stub for now)
    */
-  private static generateEmailContent(template: string, data: any): string {
-    switch (template) {
-      case "admin_renewal_reminder":
-        return `
-          <h2>Community Subscription Renewal Reminder</h2>
-          <p>Hi ${data.adminName},</p>
-          <p>Your community "${data.communityName}" subscription will renew in ${data.daysUntilRenewal} days.</p>
-          <p><strong>Renewal Details:</strong></p>
-          <ul>
-            <li>Amount: ${data.currency} ${data.subscriptionAmount}</li>
-            <li>Renewal Date: ${new Date(data.renewalDate).toLocaleDateString()}</li>
-            <li>Community: ${data.communityName}</li>
-            <li>Access: Unlimited members, storage, events & channels</li>
-          </ul>
-          <p>Please ensure your payment method is up to date to avoid any interruption to your unlimited community services.</p>
-          <p>Your community members depend on uninterrupted access. Thank you for being a valued community administrator!</p>
-        `;
-
-      case "admin_payment_failed":
-        return `
-          <h2>🚨 Community Payment Failed - Immediate Action Required</h2>
-          <p>Hi ${data.adminName},</p>
-          <p><strong>URGENT:</strong> We were unable to process the subscription payment for your community "${data.communityName}".</p>
-          <p><strong>Payment Details:</strong></p>
-          <ul>
-            <li>Amount: ${data.currency} ${data.subscriptionAmount}</li>
-            <li>Community: ${data.communityName}</li>
-            <li>Failure Reason: ${data.failureReason}</li>
-            <li>Retry Attempts: ${data.retryAttempts} of ${data.maxRetryAttempts}</li>
-          </ul>
-          ${data.communityAtRisk ?
-            `<div style="background-color: #fee; padding: 15px; border-left: 4px solid #f00; margin: 15px 0;">
-              <strong>⚠️ CRITICAL WARNING:</strong> This is your final retry attempt. If this payment fails, your community will be suspended and members will lose access.
-            </div>` :
-            `<p>We will retry the payment ${data.maxRetryAttempts - data.retryAttempts} more times. Next retry: ${data.nextRetryDate ? new Date(data.nextRetryDate).toLocaleDateString() : 'Soon'}.</p>`
-          }
-          <p><strong>What you need to do:</strong></p>
-          <ol>
-            <li>Log into your admin dashboard immediately</li>
-            <li>Update your payment method</li>
-            <li>Ensure sufficient funds are available</li>
-          </ol>
-          <p>Your community members are counting on you to maintain their access. Please act immediately to avoid service disruption.</p>
-        `;
-
-      case "admin_subscription_cancelled":
-        return `
-          <h2>Community Subscription Cancelled</h2>
-          <p>Hi ${data.adminName},</p>
-          <p>The subscription for your community "${data.communityName}" has been cancelled as requested.</p>
-          <p><strong>Important Information:</strong></p>
-          <ul>
-            <li>Community access will continue until: ${new Date(data.accessUntil).toLocaleDateString()}</li>
-            <li>After this date, your community will be archived</li>
-            <li>Member access will be suspended</li>
-            <li>Community data will be preserved for 30 days</li>
-          </ul>
-          <p>If you change your mind, you can reactivate your subscription anytime before the access end date.</p>
-          <p>Thank you for being part of the TheTribeLab community platform.</p>
-        `;
-
-      case "admin_payment_retry":
-        return `
-          <h2>Community Payment Retry Scheduled</h2>
-          <p>Hi ${data.adminName},</p>
-          <p>We will retry the subscription payment for your community "${data.communityName}" on ${new Date(data.nextRetryDate).toLocaleDateString()}.</p>
-          <p><strong>Retry Details:</strong></p>
-          <ul>
-            <li>Amount: ${data.currency} ${data.subscriptionAmount}</li>
-            <li>Community: ${data.communityName}</li>
-            <li>Attempt: ${data.retryAttempt} of ${data.maxRetryAttempts}</li>
-            <li>Next Retry: ${new Date(data.nextRetryDate).toLocaleDateString()}</li>
-          </ul>
-          <p>Please ensure your payment method is valid and has sufficient funds to avoid service interruption for your community.</p>
-        `;
-
-      // Legacy templates for backward compatibility
-      case "renewal_reminder":
-        return this.generateEmailContent("admin_renewal_reminder", data);
-
-      case "payment_failed":
-        return this.generateEmailContent("admin_payment_failed", data);
-
-      case "subscription_cancelled":
-        return this.generateEmailContent("admin_subscription_cancelled", data);
-
-      case "payment_retry":
-        return this.generateEmailContent("admin_payment_retry", data);
-
-      default:
-        return `<p>Community subscription notification</p>`;
-    }
+  static async sendEmailNotification(_options: {
+    to: string;
+    subject: string;
+    template: string;
+    data?: any;
+  }): Promise<void> {
+    // ERROR: This method is not implemented. Use EmailQueue.addJob or sendEmail directly instead.
+    throw new Error('sendEmailNotification is not implemented. Use EmailQueue.addJob or sendEmail directly.');
   }
+
 }

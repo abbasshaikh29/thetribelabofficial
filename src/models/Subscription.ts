@@ -23,7 +23,7 @@ export interface ICommunitySubscription {
   // Standardized billing details - $29/month processed as ₹2,400
   amount: number; // Always 240000 (₹2,400 in paise)
   currency: string; // Always "INR"
-  interval: "monthly"; // Only monthly subscriptions
+  interval: "monthly" | "yearly"; // Only monthly or yearly subscriptions
   intervalCount: number; // Always 1
   // Trial and retry logic
   trialEndDate?: Date;
@@ -108,7 +108,7 @@ const communitySubscriptionSchema = new Schema<ICommunitySubscription>(
     currency: { type: String, default: "INR", required: true },
     interval: {
       type: String,
-      enum: ["monthly"],
+      enum: ["monthly", "yearly"],
       default: "monthly",
       required: true
     },

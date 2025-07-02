@@ -12,10 +12,6 @@ const CommunityNav = dynamic(() => import('@/components/communitynav/CommunityNa
   ssr: false // Optional: if CommunityNav relies heavily on client-side things like window
 });
 
-const CompactLeaderboard = dynamic(() => import('@/components/gamification/CompactLeaderboard'), {
-  loading: () => <div className="skeleton h-64 w-full"></div>,
-  ssr: false
-});
 async function getCommunity(slug: string): Promise<ICommunity | null> {
   try {
     const response = await fetch(`/api/community/${slug}`);
@@ -79,18 +75,10 @@ function Page() {
           <div className="w-full lg:w-1/4 mt-4 lg:mt-0 space-y-4">
             <CommunityAboutcard slug={slug} />
 
-            {/* Compact Leaderboard */}
-            <CompactLeaderboard
-              communityId={community?._id?.toString() || ""}
-              communitySlug={slug}
-              period="30day"
-              limit={5}
-            />
-
             <div className="mt-3 sm:mt-4 justify-center flex lg:text-left">
               <h4 className="text-sm sm:text-base  ">
                 powered by
-                <span className="text-rose-600 ml-2">THETRIBELAB</span>
+                <span className="text-primary ml-2">THETRIBELAB</span>
               </h4>
             </div>
           </div>

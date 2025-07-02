@@ -9,6 +9,8 @@ import CommunitySettingsForm from "@/components/communitycommponets/CommunitySet
 import CommunityAboutMediaManager from "@/components/communitycommponets/CommunityAboutMediaManager";
 import CommunityAccessSettings from "@/components/communitycommponets/CommunityAccessSettings";
 import CommunityPlanInfo from "@/components/communitycommponets/CommunityPlanInfo";
+import CommunityPaymentGatewaySettings from "@/components/communitycommponets/CommunityPaymentGatewaySettings";
+import RazorpayConnectForm from "@/components/payments/RazorpayConnectForm";
 
 import AnalyticsDashboard from "@/components/communitycommponets/AnalyticsDashboard";
 import AdminPanelSettings from "@/components/communitycommponets/AdminPanelSettings";
@@ -36,6 +38,7 @@ export default function CommunitySettingsModal({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSubAdmin, setIsSubAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingGateway, setEditingGateway] = useState<"stripe" | "razorpay" | null>(null);
 
   // Check if user is admin or sub-admin
   useEffect(() => {
@@ -70,6 +73,7 @@ export default function CommunitySettingsModal({
   React.useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
+      setEditingGateway(null); // Reset editing state when modal opens/changes
     }
   }, [isOpen, initialTab]);
 
@@ -111,6 +115,48 @@ export default function CommunitySettingsModal({
         return isAdmin ? <CommunityAccessSettings /> : null;
       case "PlanInfo":
         return isAdmin ? <CommunityPlanInfo /> : null;
+      case "PaymentGateway":
+        return isAdmin ? (
+          <div className="space-y-8">
+            {/* Show plugin list. onEdit will set the state to show the form */}
+            {!editingGateway && (
+              <CommunityPaymentGatewaySettings
+                onEditGateway={(name) => setEditingGateway(name)}
+              />
+            )}
+
+            {/* Show the correct form based on which gateway is being edited */}
+            {editingGateway === "razorpay" && (
+              <div>
+                <button
+                  className="btn btn-sm btn-ghost mb-4"
+                  onClick={() => setEditingGateway(null)}
+                >
+                  &larr; Back to gateways
+                </button>
+                <RazorpayConnectForm />
+              </div>
+            )}
+
+            {/* Placeholder for Stripe form */}
+            {editingGateway === "stripe" && (
+              <div>
+                <button
+                  className="btn btn-sm btn-ghost mb-4"
+                  onClick={() => setEditingGateway(null)}
+                >
+                  &larr; Back to gateways
+                </button>
+                <div className="border rounded-lg p-8 text-center">
+                  <h3 className="text-xl font-bold">Stripe Connect</h3>
+                  <p className="mt-2 text-gray-500">
+                    Stripe connection form will be here.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null;
       case "Billing":
         return isAdmin ? (
           <div className="space-y-6">
@@ -221,6 +267,14 @@ export default function CommunitySettingsModal({
                       Plan Info
                     </button>
                     <button
+                      onClick={() => setActiveTab("PaymentGateway")}
+                      className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
+                        activeTab === "PaymentGateway" ? "bg-primary text-primary-content" : ""
+                      }`}
+                    >
+                      Payments
+                    </button>
+                    <button
                       onClick={() => setActiveTab("Billing")}
                       className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
                         activeTab === "Billing" ? "bg-primary text-primary-content" : ""
@@ -245,7 +299,7 @@ export default function CommunitySettingsModal({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-4 lg:p-6 overflow-auto">
+        <div className="flex-1 p-4 lg:p-6 overflow-auto max-h-[70vh] min-h-[300px]">
           {renderTabContent()}
         </div>
       </div>

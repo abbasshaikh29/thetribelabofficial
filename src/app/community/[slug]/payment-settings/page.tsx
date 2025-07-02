@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Header from "@/components/Header";
 import CommunityPaymentSettings from "@/components/payments/CommunityPaymentSettings";
+import RazorpayConnectForm from "@/components/payments/RazorpayConnectForm";
 import TransactionHistory from "@/components/payments/TransactionHistory";
 
 export default function CommunityPaymentSettingsPage() {
@@ -111,10 +112,14 @@ export default function CommunityPaymentSettingsPage() {
 
         {communityId && (
           <>
-            <CommunityPaymentSettings
-              communityId={communityId}
-              communitySlug={slug}
-            />
+            <RazorpayConnectForm />
+
+            <div className="mt-12">
+              <CommunityPaymentSettings
+                communityId={communityId}
+                communitySlug={slug}
+              />
+            </div>
 
             <div className="mt-16">
               <h2 className="text-2xl font-bold mb-6 text-halloween-purple">

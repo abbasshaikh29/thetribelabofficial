@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Explicitly list file extensions for pages
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  pageExtensions: ["js", "jsx", "ts", "tsx"],
   // Specify external packages for server components
   serverExternalPackages: [],
   images: {
@@ -111,7 +111,8 @@ const nextConfig = {
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
-    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com; frame-src https://checkout.razorpay.com https://*.razorpay.com; connect-src 'self' https://*.razorpay.com;",
+    contentSecurityPolicy:
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com; frame-src https://checkout.razorpay.com https://*.razorpay.com; connect-src 'self' https://*.razorpay.com;",
   },
   // Enable strict mode for better development experience
   reactStrictMode: true,
@@ -119,10 +120,10 @@ const nextConfig = {
   poweredByHeader: false,
   // Add security headers and controlled CORS
   async headers() {
-    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isDevelopment = process.env.NODE_ENV === "development";
     const allowedOrigins = isDevelopment
-      ? ['http://localhost:3000', 'https://localhost:3000']
-      : ['https://thetribelab.com', 'https://www.thetribelab.com'];
+      ? ["http://localhost:3000", "https://localhost:3000"]
+      : ["https://thetribelab.com", "https://www.thetribelab.com"];
 
     return [
       {
@@ -149,11 +150,28 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
-          // CORS headers (more restrictive)
+          {
+            key: "X-Permitted-Cross-Domain-Policies",
+            value: "none",
+          },
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "require-corp",
+          },
           {
             key: "Cross-Origin-Opener-Policy",
-            value: "same-origin-allow-popups",
+            value: "same-origin",
           },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-site",
+          },
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.razorpay.com wss: ws:; frame-src https://checkout.razorpay.com https://*.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+          },
+          // CORS headers (more restrictive)
           {
             key: "Cross-Origin-Resource-Policy",
             value: "same-site",
@@ -164,7 +182,8 @@ const nextConfig = {
           },
           {
             key: "Access-Control-Allow-Headers",
-            value: "X-Requested-With, Content-Type, Authorization, X-CSRF-Token",
+            value:
+              "X-Requested-With, Content-Type, Authorization, X-CSRF-Token",
           },
           {
             key: "Access-Control-Max-Age",
@@ -178,7 +197,9 @@ const nextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: isDevelopment ? "http://localhost:3000" : "https://thetribelab.com",
+            value: isDevelopment
+              ? "http://localhost:3000"
+              : "https://thetribelab.com",
           },
           {
             key: "Access-Control-Allow-Credentials",

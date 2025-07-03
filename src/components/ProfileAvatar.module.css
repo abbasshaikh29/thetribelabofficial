@@ -54,3 +54,19 @@
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
+
+.initialsAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color, #6b21a8);
+  color: var(--primary-content, #ffffff);
+}
+
+.initials {
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  position: absolute;
+  z-index: 20;
+}

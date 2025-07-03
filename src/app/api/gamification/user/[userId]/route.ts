@@ -20,6 +20,20 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const communityId = searchParams.get("communityId");
 
+    // Validate userId - check if it's a valid ObjectId string
+    if (
+      !params.userId ||
+      typeof params.userId !== "string" ||
+      params.userId === "[object Object]" ||
+      !mongoose.Types.ObjectId.isValid(params.userId)
+    ) {
+      console.error("Invalid userId:", params.userId);
+      return NextResponse.json(
+        { error: "Invalid user ID provided" },
+        { status: 400 }
+      );
+    }
+
     let resolvedCommunityId: string | undefined = undefined;
 
     if (communityId) {
@@ -30,7 +44,9 @@ export async function GET(
         resolvedCommunityId = communityId;
       } else {
         // If it's a slug, resolve it to ObjectId
-        const community = await Community.findOne({ slug: communityId }).select("_id");
+        const community = await Community.findOne({ slug: communityId }).select(
+          "_id"
+        );
         if (!community) {
           return NextResponse.json(
             { error: "Community not found" },

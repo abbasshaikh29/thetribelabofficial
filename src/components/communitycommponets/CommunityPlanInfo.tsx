@@ -1,10 +1,19 @@
 "use client";
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, AlertCircle, CheckCircle, Clock, Calendar, RefreshCw, X } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Calendar,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { useCommunityBilling } from "@/contexts/CommunityBillingContext";
-import PayNowButton, { TrialConversionButton } from "@/components/payments/PayNowButton";
-
+import PayNowButton, {
+  TrialConversionButton,
+} from "@/components/payments/PayNowButton";
 
 export default function CommunityPlanInfo() {
   const { slug } = useParams<{ slug: string }>();
@@ -17,20 +26,18 @@ export default function CommunityPlanInfo() {
     daysRemaining,
     trialActive,
     subscriptionActive,
-    percentRemaining
+    percentRemaining,
   } = useCommunityBilling();
   const [cancelling, setCancelling] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-
-
   // Format date to a readable string
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -71,14 +78,14 @@ export default function CommunityPlanInfo() {
         requestBody = {
           subscriptionId: planInfo.subscriptionId,
           communityId: planInfo._id,
-          cancelAtCycleEnd: true
+          cancelAtCycleEnd: true,
         };
       } else {
         // Use community-based cancellation endpoint (we may need to create this)
         endpoint = `/api/community/${slug}/cancel-subscription`;
         requestBody = {
           communityId: planInfo._id,
-          cancelAtCycleEnd: true
+          cancelAtCycleEnd: true,
         };
       }
 
@@ -101,7 +108,9 @@ export default function CommunityPlanInfo() {
       }
     } catch (err) {
       console.error("Error cancelling subscription:", err);
-      setLocalError(err instanceof Error ? err.message : "Failed to cancel subscription");
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to cancel subscription"
+      );
     } finally {
       setCancelling(false);
     }
@@ -136,8 +145,6 @@ export default function CommunityPlanInfo() {
     );
   }
 
-
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -148,13 +155,13 @@ export default function CommunityPlanInfo() {
           className="btn btn-outline btn-sm"
           title="Refresh plan information"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          <RefreshCw
+            className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+          />
+          {refreshing ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
-
-      
       <div className="flex flex-col gap-6 w-full max-w-full">
         {/* Current Plan Status */}
         <div className="card bg-base-200 shadow-md w-full">
@@ -163,18 +170,24 @@ export default function CommunityPlanInfo() {
               <CheckCircle className="w-5 h-5" />
               Current Plan
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Status:</span>
-                <span className={`font-semibold ${
-                  subscriptionActive ? "text-success" :
-                  trialActive ? "text-warning" :
-                  "text-error"
-                }`}>
-                  {subscriptionActive ? "Premium (Active)" :
-                   trialActive ? "Trial Period" :
-                   planInfo?.paymentStatus === "expired" ? "Expired" : "Free Plan"}
+                <span
+                  className={`font-semibold ${
+                    subscriptionActive
+                      ? "text-success"
+                      : trialActive
+                        ? "text-warning"
+                        : "text-error"
+                  }`}
+                >
+                  {subscriptionActive
+                    ? "Premium (Active)"
+                    : trialActive
+                      ? "Free Trial (Premium)"
+                      : "No Active Plan"}
                 </span>
               </div>
 
@@ -185,10 +198,10 @@ export default function CommunityPlanInfo() {
                 </div>
               )}
 
-              {trialActive && (
+              {trialActive && planInfo?.subscriptionEndDate && (
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Trial Ends:</span>
-                  <span>{formatDate(planInfo?.adminTrialInfo?.endDate)}</span>
+                  <span>{formatDate(planInfo.subscriptionEndDate)}</span>
                 </div>
               )}
             </div>
@@ -203,11 +216,13 @@ export default function CommunityPlanInfo() {
                 <Clock className="w-5 h-5" />
                 Trial Progress
               </h3>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Days Remaining:</span>
-                  <span className="font-semibold text-warning">{daysRemaining} days</span>
+                  <span className="font-semibold text-warning">
+                    {daysRemaining} days
+                  </span>
                 </div>
 
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -216,33 +231,14 @@ export default function CommunityPlanInfo() {
                     style={{ width: `${percentRemaining}%` }}
                   ></div>
                 </div>
-                
-                <div className="flex justify-between text-xs text-gray-600">
-                  {planInfo?.adminTrialInfo?.startDate && (
-                    <span>Started: {formatDate(planInfo.adminTrialInfo.startDate)}</span>
-                  )}
-                  {planInfo?.adminTrialInfo?.endDate && (
-                    <span>Ends: {formatDate(planInfo.adminTrialInfo.endDate)}</span>
-                  )}
-                </div>
 
-                {/* Trial Conversion Button */}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <TrialConversionButton
-                    communityId={planInfo?._id}
-                    communitySlug={slug}
-                    daysRemaining={daysRemaining}
-                    context="settings"
-                    onSuccess={(subscription) => {
-                      console.log('Trial converted successfully:', subscription);
-                      refreshBillingData(); // Refresh the billing data
-                    }}
-                    onError={(error) => {
-                      console.error('Trial conversion error:', error);
-                      setLocalError(error);
-                    }}
-                  />
-                </div>
+                {planInfo?.subscriptionEndDate && (
+                  <div className="flex justify-center text-xs text-gray-600">
+                    <span>
+                      Trial ends: {formatDate(planInfo.subscriptionEndDate)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -252,7 +248,7 @@ export default function CommunityPlanInfo() {
         <div className="card bg-base-200 shadow-md w-full">
           <div className="card-body">
             <h3 className="card-title">Plan Features</h3>
-            
+
             <div className="space-y-2">
               <div className="flex items-center">
                 <CheckCircle className="w-4 h-4 text-success mr-2" />
@@ -286,42 +282,8 @@ export default function CommunityPlanInfo() {
         <div className="card bg-base-200 shadow-md w-full">
           <div className="card-body">
             <h3 className="card-title">Quick Actions</h3>
-            
-            <div className="space-y-3">
-              {!subscriptionActive && (
-                <div className="space-y-2">
-                  {trialActive ? 
-                       (
-                    <PayNowButton
-                      communityId={planInfo?._id}
-                      communitySlug={slug}
-                      buttonText="Start 14-Day Free Trial"
-                      variant="primary"
-                      size="md"
-                      showFeatures={true}
-                      context="settings"
-                      onSuccess={(subscription) => {
-                        console.log('Trial started:', subscription);
-                        refreshBillingData();
-                      }}
-                      onError={(error) => {
-                        console.error('Trial start error:', error);
-                        setLocalError(error);
-                      }}
-                    />
-                  ):("nothing")}
 
-                  <div className="text-center">
-                    <a
-                      href={`/billing/${slug}`}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
-                    >
-                      View full billing details
-                    </a>
-                  </div>
-                </div>
-              )}
-              
+            <div className="space-y-3">
               {subscriptionActive && (
                 <>
                   <div className="alert alert-success">
@@ -343,11 +305,23 @@ export default function CommunityPlanInfo() {
                   {planInfo?.subscriptionStatus === "cancelled" && (
                     <div className="alert alert-warning">
                       <AlertCircle className="w-5 h-5" />
-                      <span>Subscription cancelled. Access until {formatDate(planInfo?.subscriptionEndDate)}</span>
+                      <span>
+                        Subscription cancelled. Access until{" "}
+                        {formatDate(planInfo?.subscriptionEndDate)}
+                      </span>
                     </div>
                   )}
                 </>
               )}
+
+              <div className="text-center">
+                <a
+                  href={`/billing/${slug}`}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  View full billing details
+                </a>
+              </div>
             </div>
           </div>
         </div>

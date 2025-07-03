@@ -24,9 +24,9 @@ export default function NewPaymentPlanPage() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number>(0);
   const [currency, setCurrency] = useState("INR");
-  const [interval, setInterval] = useState<"one_time" | "monthly" | "yearly">(
-    "monthly"
-  );
+  const [billingInterval, setBillingInterval] = useState<
+    "one_time" | "monthly" | "yearly"
+  >("monthly");
   const [intervalCount, setIntervalCount] = useState<number>(1);
   const [features, setFeatures] = useState<string[]>([""]);
 
@@ -123,7 +123,7 @@ export default function NewPaymentPlanPage() {
           description,
           amount: parseFloat(amount.toString()),
           currency,
-          interval,
+          interval: billingInterval,
           intervalCount: parseInt(intervalCount.toString()),
           features: filteredFeatures,
           planType: "community",
@@ -290,8 +290,20 @@ export default function NewPaymentPlanPage() {
                 </label>
                 <select
                   id="interval"
-                  value={interval}
-                  onChange={(e) => setInterval(e.target.value as any)}
+                  value={billingInterval}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Validate input to prevent code injection
+                    if (
+                      value === "one_time" ||
+                      value === "monthly" ||
+                      value === "yearly"
+                    ) {
+                      setBillingInterval(
+                        value as "one_time" | "monthly" | "yearly"
+                      );
+                    }
+                  }}
                   className="select select-bordered w-full"
                   required
                 >
@@ -301,7 +313,7 @@ export default function NewPaymentPlanPage() {
                 </select>
               </div>
 
-              {interval !== "one_time" && (
+              {billingInterval !== "one_time" && (
                 <div className="form-control">
                   <label htmlFor="intervalCount" className="label">
                     <span className="label-text font-medium">
@@ -312,14 +324,25 @@ export default function NewPaymentPlanPage() {
                     type="number"
                     id="intervalCount"
                     value={intervalCount}
-                    onChange={(e) => setIntervalCount(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Validate and sanitize numeric input
+                      const numValue = parseInt(value, 10);
+                      if (
+                        !isNaN(numValue) &&
+                        numValue >= 1 &&
+                        numValue <= 999
+                      ) {
+                        setIntervalCount(numValue);
+                      }
+                    }}
                     className="input input-bordered w-full"
                     placeholder="1"
                     min="1"
                     required
                   />
                   <span className="text-xs text-halloween-black/60 mt-1">
-                    {interval === "monthly"
+                    {billingInterval === "monthly"
                       ? "Number of months between charges"
                       : "Number of years between charges"}
                   </span>

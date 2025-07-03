@@ -2,9 +2,16 @@
  * Security middleware for API routes
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth-helpers';
-import { logSecurityEvent, securityHeaders, sanitizeError } from './security';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth-helpers";
+import { logSecurityEvent, securityHeaders, sanitizeError } from "./security";
+import {
+  generateCSPHeader,
+  sanitizeText,
+  sanitizeEmail,
+  sanitizeImageUrl,
+  sanitizeUrl,
+} from "./security-utils";
 
 // ============================================================================
 // RATE LIMITING STORE (In-memory for demo - use Redis in production)
@@ -18,14 +25,17 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 // Clean up expired entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimitStore.entries()) {
+      if (now > entry.resetTime) {
+        rateLimitStore.delete(key);
+      }
     }
-  }
-}, 5 * 60 * 1000);
+  },
+  5 * 60 * 1000
+);
 
 // ============================================================================
 // MIDDLEWARE FUNCTIONS
@@ -40,16 +50,17 @@ export const rateLimit = (options: {
   message: string;
 }) => {
   return (req: NextRequest): NextResponse | null => {
-    const ip = req.headers.get('x-forwarded-for') || 
-               req.headers.get('x-real-ip') || 
-               'unknown';
-    
+    const ip =
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+
     const key = `rate_limit:${ip}:${req.nextUrl.pathname}`;
     const now = Date.now();
     const windowStart = now - options.windowMs;
 
     let entry = rateLimitStore.get(key);
-    
+
     if (!entry || entry.resetTime < now) {
       entry = { count: 0, resetTime: now + options.windowMs };
     }
@@ -59,22 +70,22 @@ export const rateLimit = (options: {
 
     if (entry.count > options.max) {
       logSecurityEvent({
-        type: 'rate_limit',
+        type: "rate_limit",
         ip,
-        userAgent: req.headers.get('user-agent') || 'unknown',
-        details: `Rate limit exceeded for ${req.nextUrl.pathname}`
+        userAgent: req.headers.get("user-agent") || "unknown",
+        details: `Rate limit exceeded for ${req.nextUrl.pathname}`,
       });
 
       return NextResponse.json(
         { error: options.message },
-        { 
+        {
           status: 429,
           headers: {
-            'Retry-After': Math.ceil((entry.resetTime - now) / 1000).toString(),
-            'X-RateLimit-Limit': options.max.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': entry.resetTime.toString()
-          }
+            "Retry-After": Math.ceil((entry.resetTime - now) / 1000).toString(),
+            "X-RateLimit-Limit": options.max.toString(),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": entry.resetTime.toString(),
+          },
         }
       );
     }
@@ -86,26 +97,28 @@ export const rateLimit = (options: {
 /**
  * Authentication middleware
  */
-export const requireAuth = async (req: NextRequest): Promise<{
+export const requireAuth = async (
+  req: NextRequest
+): Promise<{
   session: any;
   response?: NextResponse;
 }> => {
   const session = await getServerSession();
-  
+
   if (!session?.user?.id) {
     logSecurityEvent({
-      type: 'auth_failure',
-      ip: req.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: req.headers.get('user-agent') || 'unknown',
-      details: `Unauthorized access attempt to ${req.nextUrl.pathname}`
+      type: "auth_failure",
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      userAgent: req.headers.get("user-agent") || "unknown",
+      details: `Unauthorized access attempt to ${req.nextUrl.pathname}`,
     });
 
     return {
       session: null,
       response: NextResponse.json(
-        { error: 'Authentication required' },
+        { error: "Authentication required" },
         { status: 401 }
-      )
+      ),
     };
   }
 
@@ -115,29 +128,31 @@ export const requireAuth = async (req: NextRequest): Promise<{
 /**
  * Admin authorization middleware
  */
-export const requireAdmin = async (req: NextRequest): Promise<{
+export const requireAdmin = async (
+  req: NextRequest
+): Promise<{
   session: any;
   response?: NextResponse;
 }> => {
   const { session, response } = await requireAuth(req);
-  
+
   if (response) return { session, response };
 
-  if (session.user.role !== 'admin' && session.user.role !== 'platform_admin') {
+  if (session.user.role !== "admin" && session.user.role !== "platform_admin") {
     logSecurityEvent({
-      type: 'auth_failure',
+      type: "auth_failure",
       userId: session.user.id,
-      ip: req.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: req.headers.get('user-agent') || 'unknown',
-      details: `Unauthorized admin access attempt to ${req.nextUrl.pathname}`
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      userAgent: req.headers.get("user-agent") || "unknown",
+      details: `Unauthorized admin access attempt to ${req.nextUrl.pathname}`,
     });
 
     return {
       session,
       response: NextResponse.json(
-        { error: 'Admin access required' },
+        { error: "Admin access required" },
         { status: 403 }
-      )
+      ),
     };
   }
 
@@ -149,35 +164,38 @@ export const requireAdmin = async (req: NextRequest): Promise<{
  */
 export const csrfProtection = (req: NextRequest): NextResponse | null => {
   // Skip CSRF for GET requests
-  if (req.method === 'GET') return null;
+  if (req.method === "GET") return null;
 
-  const origin = req.headers.get('origin');
-  const referer = req.headers.get('referer');
-  const host = req.headers.get('host');
+  const origin = req.headers.get("origin");
+  const referer = req.headers.get("referer");
+  const host = req.headers.get("host");
 
   // Check if request is from same origin
   const allowedOrigins: string[] = [
     `https://${host}`,
     `http://${host}`,
-    process.env.NEXTAUTH_URL || ""
+    process.env.NEXTAUTH_URL || "",
   ].filter(Boolean) as string[];
 
-  const isValidOrigin = typeof origin === "string" && allowedOrigins.includes(origin);
+  const isValidOrigin =
+    typeof origin === "string" && allowedOrigins.includes(origin);
   let isValidReferer = false;
   if (typeof referer === "string") {
-    isValidReferer = allowedOrigins.some(allowed => referer.startsWith(allowed));
+    isValidReferer = allowedOrigins.some((allowed) =>
+      referer.startsWith(allowed)
+    );
   }
 
   if (!isValidOrigin && !isValidReferer) {
     logSecurityEvent({
-      type: 'suspicious_activity',
-      ip: req.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: req.headers.get('user-agent') || 'unknown',
-      details: `CSRF attempt detected: origin=${origin}, referer=${referer}`
+      type: "suspicious_activity",
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      userAgent: req.headers.get("user-agent") || "unknown",
+      details: `CSRF attempt detected: origin=${origin}, referer=${referer}`,
     });
 
     return NextResponse.json(
-      { error: 'Invalid request origin' },
+      { error: "Invalid request origin" },
       { status: 403 }
     );
   }
@@ -186,12 +204,22 @@ export const csrfProtection = (req: NextRequest): NextResponse | null => {
 };
 
 /**
- * Security headers middleware
+ * Enhanced security headers middleware with CSP
  */
 export const addSecurityHeaders = (response: NextResponse): NextResponse => {
+  // Add standard security headers
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
+
+  // Add Content Security Policy
+  response.headers.set("Content-Security-Policy", generateCSPHeader());
+
+  // Add additional security headers
+  response.headers.set("X-Permitted-Cross-Domain-Policies", "none");
+  response.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  response.headers.set("Cross-Origin-Resource-Policy", "same-site");
 
   return response;
 };
@@ -200,12 +228,12 @@ export const addSecurityHeaders = (response: NextResponse): NextResponse => {
  * Input validation middleware
  */
 export const validateContentType = (req: NextRequest): NextResponse | null => {
-  if (['POST', 'PUT', 'PATCH'].includes(req.method || '')) {
-    const contentType = req.headers.get('content-type');
-    
-    if (!contentType || !contentType.includes('application/json')) {
+  if (["POST", "PUT", "PATCH"].includes(req.method || "")) {
+    const contentType = req.headers.get("content-type");
+
+    if (!contentType || !contentType.includes("application/json")) {
       return NextResponse.json(
-        { error: 'Content-Type must be application/json' },
+        { error: "Content-Type must be application/json" },
         { status: 400 }
       );
     }
@@ -219,25 +247,94 @@ export const validateContentType = (req: NextRequest): NextResponse | null => {
  */
 export const limitRequestSize = (maxSize: number = 10 * 1024 * 1024) => {
   return (req: NextRequest): NextResponse | null => {
-    const contentLength = req.headers.get('content-length');
-    
+    const contentLength = req.headers.get("content-length");
+
     if (contentLength && parseInt(contentLength) > maxSize) {
       logSecurityEvent({
-        type: 'suspicious_activity',
-        ip: req.headers.get('x-forwarded-for') || 'unknown',
-        userAgent: req.headers.get('user-agent') || 'unknown',
-        details: `Request size limit exceeded: ${contentLength} bytes`
+        type: "suspicious_activity",
+        ip: req.headers.get("x-forwarded-for") || "unknown",
+        userAgent: req.headers.get("user-agent") || "unknown",
+        details: `Request size limit exceeded: ${contentLength} bytes`,
       });
 
-      return NextResponse.json(
-        { error: 'Request too large' },
-        { status: 413 }
-      );
+      return NextResponse.json({ error: "Request too large" }, { status: 413 });
     }
 
     return null;
   };
 };
+
+/**
+ * Enhanced input sanitization middleware
+ */
+export const sanitizeRequestBody = async (
+  req: NextRequest
+): Promise<{
+  sanitizedBody: any;
+  response?: NextResponse;
+}> => {
+  try {
+    const body = await req.json();
+    const sanitizedBody = sanitizeObjectRecursively(body);
+
+    return { sanitizedBody };
+  } catch (error) {
+    logSecurityEvent({
+      type: "suspicious_activity",
+      ip: req.headers.get("x-forwarded-for") || "unknown",
+      userAgent: req.headers.get("user-agent") || "unknown",
+      details: `Invalid JSON in request body: ${error}`,
+    });
+
+    return {
+      sanitizedBody: null,
+      response: NextResponse.json(
+        { error: "Invalid request format" },
+        { status: 400 }
+      ),
+    };
+  }
+};
+
+/**
+ * Recursively sanitizes object properties
+ */
+function sanitizeObjectRecursively(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (typeof obj === "string") {
+    return sanitizeText(obj);
+  }
+
+  if (typeof obj === "number" || typeof obj === "boolean") {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeObjectRecursively(item));
+  }
+
+  if (typeof obj === "object") {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Sanitize key names to prevent prototype pollution
+      const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, "");
+      if (
+        safeKey &&
+        safeKey !== "__proto__" &&
+        safeKey !== "constructor" &&
+        safeKey !== "prototype"
+      ) {
+        sanitized[safeKey] = sanitizeObjectRecursively(value);
+      }
+    }
+    return sanitized;
+  }
+
+  return obj;
+}
 
 // ============================================================================
 // MIDDLEWARE COMPOSER
@@ -246,7 +343,11 @@ export const limitRequestSize = (maxSize: number = 10 * 1024 * 1024) => {
 /**
  * Composes multiple middleware functions
  */
-export const composeMiddleware = (...middlewares: Array<(req: NextRequest) => NextResponse | Promise<NextResponse> | null>) => {
+export const composeMiddleware = (
+  ...middlewares: Array<
+    (req: NextRequest) => NextResponse | Promise<NextResponse> | null
+  >
+) => {
   return async (req: NextRequest): Promise<NextResponse | null> => {
     for (const middleware of middlewares) {
       const result = await middleware(req);
@@ -267,13 +368,13 @@ export const withErrorHandling = (
       const response = await handler(req, ...args);
       return addSecurityHeaders(response);
     } catch (error) {
-      console.error('API Error:', error);
-      
+      console.error("API Error:", error);
+
       logSecurityEvent({
-        type: 'suspicious_activity',
-        ip: req.headers.get('x-forwarded-for') || 'unknown',
-        userAgent: req.headers.get('user-agent') || 'unknown',
-        details: `API error in ${req.nextUrl.pathname}: ${sanitizeError(error)}`
+        type: "suspicious_activity",
+        ip: req.headers.get("x-forwarded-for") || "unknown",
+        userAgent: req.headers.get("user-agent") || "unknown",
+        details: `API error in ${req.nextUrl.pathname}: ${sanitizeError(error)}`,
       });
 
       const response = NextResponse.json(
@@ -297,7 +398,7 @@ export const standardApiMiddleware = composeMiddleware(
   rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100,
-    message: 'Too many requests, please try again later'
+    message: "Too many requests, please try again later",
   }),
   csrfProtection,
   validateContentType,

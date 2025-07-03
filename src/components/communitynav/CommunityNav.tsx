@@ -3,13 +3,25 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { User, ChevronDown, Compass, Plus } from "lucide-react";
+import {
+  User,
+  ChevronDown,
+  Compass,
+  Plus,
+  Home,
+  BookOpen,
+  Calendar,
+  Info,
+  Users,
+  Trophy,
+} from "lucide-react";
 import { useNotification } from "@/components/Notification";
 import { useSettingsModal } from "@/components/modals/SettingsModalProvider";
 import { useSession, signOut } from "next-auth/react";
 import CommunityIcon from "./CommunityIcon";
 import MessageIcon from "../messages/MessageIcon";
 import NotificationIcon from "../notifications/NotificationIcon";
+import ThemeSwitcher from "../ThemeSwitcher";
 import ProfileAvatar from "../ProfileAvatar";
 interface Community {
   _id: string;
@@ -18,6 +30,54 @@ interface Community {
   iconImageUrl?: string;
   role: string;
 }
+
+// Function to safely validate image URLs
+const sanitizeImageUrl = (url?: string): string | null => {
+  if (!url || typeof url !== "string") return null;
+
+  // Remove any leading/trailing whitespace
+  const cleanUrl = url.trim();
+
+  // Block dangerous protocols
+  const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
+  const lowerCaseUrl = cleanUrl.toLowerCase();
+
+  if (
+    dangerousProtocols.some((protocol) => lowerCaseUrl.startsWith(protocol))
+  ) {
+    return null;
+  }
+
+  // Only allow http, https, or relative URLs
+  if (
+    cleanUrl.startsWith("http://") ||
+    cleanUrl.startsWith("https://") ||
+    cleanUrl.startsWith("/")
+  ) {
+    try {
+      // For absolute URLs, validate them further
+      if (cleanUrl.startsWith("http")) {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+          return cleanUrl;
+        }
+      } else {
+        // For relative URLs, ensure they don't contain dangerous patterns
+        if (
+          !lowerCaseUrl.includes("javascript:") &&
+          !lowerCaseUrl.includes("vbscript:")
+        ) {
+          return cleanUrl;
+        }
+      }
+    } catch (e) {
+      // Invalid URL format
+      return null;
+    }
+  }
+
+  return null;
+};
 
 function CommunityNav() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,14 +89,41 @@ function CommunityNav() {
   const [isMember, setIsMember] = useState(false);
   const [iconImage, setIconImage] = useState("");
   const [userCommunities, setUserCommunities] = useState<Community[]>([]);
+  const [communitiesLoading, setCommunitiesLoading] = useState(false);
+  const [communitiesError, setCommunitiesError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Debug logging for slug parameter
   useEffect(() => {
-    console.log('CommunityNav: slug parameter changed:', slug);
-    console.log('CommunityNav: pathname:', pathname);
+    console.log("CommunityNav: slug parameter changed:", slug);
+    console.log("CommunityNav: pathname:", pathname);
   }, [slug, pathname]);
 
-  // No debug logging in production
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const dropdown = document.querySelector(".communities-dropdown");
+      if (dropdown && !dropdown.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const closeDropdown = () => {
+    setIsDropdownOpen(false);
+  };
 
   // Function to check if a link is active
   const isLinkActive = (path: string) => {
@@ -64,13 +151,16 @@ function CommunityNav() {
 
   const fetchCommunity = async () => {
     // Add validation for slug and session
-    if (!session?.user?.id || !slug || slug === 'undefined') {
-      console.log('CommunityNav: Skipping fetchCommunity - missing slug or session:', { slug, userId: session?.user?.id });
+    if (!session?.user?.id || !slug) {
+      console.log(
+        "CommunityNav: Skipping fetchCommunity - missing slug or session:",
+        { slug, userId: session?.user?.id }
+      );
       return;
     }
 
     try {
-      console.log('CommunityNav: Fetching community data for slug:', slug);
+      console.log("CommunityNav: Fetching community data for slug:", slug);
       // Add a timestamp to prevent caching
       const timestamp = Date.now();
 
@@ -85,12 +175,19 @@ function CommunityNav() {
       });
 
       if (!res.ok) {
-        console.error('CommunityNav: Failed to fetch community data:', res.status, res.statusText);
+        console.error(
+          "CommunityNav: Failed to fetch community data:",
+          res.status,
+          res.statusText
+        );
         throw new Error("Failed to fetch community data");
       }
 
       const data = await res.json();
-      console.log('CommunityNav: Successfully fetched community data:', data.name);
+      console.log(
+        "CommunityNav: Successfully fetched community data:",
+        data.name
+      );
       setName(data.name);
 
       // Set the icon image URL, ensuring it's a string
@@ -169,29 +266,27 @@ function CommunityNav() {
         img.src = finalIconUrl;
       }
     } catch (error) {
-      console.error('CommunityNav: Error fetching community data:', error);
+      console.error("CommunityNav: Error fetching community data:", error);
       // Silent error handling for UI, but log for debugging
     }
   };
 
   useEffect(() => {
     // Only fetch if we have a valid slug and session
-    if (!slug || slug === 'undefined' || !session?.user?.id) {
-      console.log('CommunityNav: Skipping useEffect - invalid slug or no session:', { slug, userId: session?.user?.id });
+    if (!slug || !session?.user?.id) {
+      console.log(
+        "CommunityNav: Skipping useEffect - invalid slug or no session:",
+        { slug, userId: session?.user?.id }
+      );
       return;
     }
 
-    console.log('CommunityNav: useEffect triggered for slug:', slug);
+    console.log("CommunityNav: useEffect triggered for slug:", slug);
     // Fetch community data when component mounts or slug changes
     fetchCommunity();
 
-    // Set up an interval to periodically check for updates
-    const intervalId = setInterval(() => {
-      fetchCommunity();
-    }, 10000); // Check every 10 seconds
-
-    // Clean up the interval when the component unmounts
-    return () => clearInterval(intervalId);
+    // Removed auto-reload interval to prevent constant refreshing
+    // Users can manually refresh if needed
   }, [slug, session?.user?.id]);
 
   // Fetch user communities
@@ -207,10 +302,28 @@ function CommunityNav() {
 
   useEffect(() => {
     const fetchUserCommunities = async () => {
-      if (session?.user && slug && slug !== 'undefined') {
+      if (session?.user && slug) {
         try {
-          console.log('CommunityNav: Fetching user communities, excluding slug:', slug);
-          const response = await fetch("/api/user/communities");
+          setCommunitiesLoading(true);
+          setCommunitiesError(null);
+          console.log(
+            "CommunityNav: Fetching user communities, excluding slug:",
+            slug
+          );
+
+          // Add timeout for user communities fetch
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+          const response = await fetch("/api/user/communities", {
+            signal: controller.signal,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          clearTimeout(timeoutId);
+
           if (response.ok) {
             const data = await response.json();
             // Filter out the current community from the dropdown
@@ -221,9 +334,22 @@ function CommunityNav() {
 
             // Preload all community icons
             preloadCommunityIcons(filteredCommunities);
+          } else {
+            throw new Error(`Failed to fetch communities: ${response.status}`);
           }
         } catch (error) {
-          console.error('CommunityNav: Error fetching user communities:', error);
+          if (error instanceof Error && error.name === "AbortError") {
+            console.warn("User communities fetch timed out");
+            setCommunitiesError("Request timed out. Please try again.");
+          } else {
+            console.error(
+              "CommunityNav: Error fetching user communities:",
+              error
+            );
+            setCommunitiesError("Failed to load communities");
+          }
+        } finally {
+          setCommunitiesLoading(false);
         }
       }
     };
@@ -241,122 +367,252 @@ function CommunityNav() {
   };
 
   return (
-    <div className="navbar sticky top-0 shadow-md z-10" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-      <div className="flex flex-col justify-center w-full">
-        <div className="container mx-auto flex justify-between px-4 sm:px-8 md:px-16 items-center">
-          <div className="flex-1 px-2 lg:flex-none flex items-center gap-2">
-            <div className="flex items-center">
-              <div className="mr-2 flex-shrink-0">
-                <CommunityIcon
-                  iconUrl={iconImage}
-                  name={Name}
-                  size="md"
-                  className="hover:scale-105 transition-transform duration-200"
-                />
-              </div>
-              <div className="flex flex-col">
-                {slug && slug !== 'undefined' ? (
-                  <Link
-                    href={`/Newcompage/${slug}`}
-                    className="btn btn-ghost text-sm sm:text-lg md:text-xl gap-1 sm:gap-2 normal-case font-bold p-0 h-auto min-h-0"
-                    prefetch={true}
-                    onClick={() =>
-                      showNotification("Welcome to TheTribelab", "success")
-                    }
-                  >
-                    <span className="truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
-                      {Name || 'Loading...'}
-                    </span>
-                  </Link>
-                ) : (
-                  <span className="text-sm sm:text-lg md:text-xl font-bold text-muted">
-                    {Name || 'Invalid Community'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Communities Dropdown */}
-            {session && (
-              <div className="dropdown dropdown-bottom">
-                <div
-                  tabIndex={0}
-                  role="button"
-                  aria-label="Switch community"
-                  title="Switch community"
-                  className="btn btn-ghost btn-sm normal-case flex items-center gap-1 hover:bg-base-200 rounded-full"
-                >
-                  <ChevronDown size={20} className="text-primary" />
+    <div
+      className="sticky top-0 shadow-md z-10 w-full flex justify-center items-center"
+      style={{ backgroundColor: "var(--bg-secondary)" }}
+    >
+      <div className="w-full md:w-2/3">
+        <div className="flex flex-col w-full">
+          {/* Top Navigation Bar */}
+          <div className="flex justify-between items-center w-full pr-2 sm:pr-4 md:pr-8 py-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex-shrink-0">
+                  <CommunityIcon
+                    iconUrl={iconImage}
+                    name={Name}
+                    size="md"
+                    className="hover:scale-105 transition-transform duration-200"
+                  />
                 </div>
-                <ul
-                  tabIndex={0}
-                  className="dropdown-content z-[1] text-lg menu p-2 shadow-lg bg-base-100 rounded-box w-72 border border-base-300"
-                >
-                  <li className="mt-2">
+                <div className="flex flex-col min-w-0 flex-1">
+                  {slug ? (
                     <Link
-                      href="/community-feed"
-                      className="flex items-center gap-2 hover:bg-base-200 rounded-lg py-2"
+                      href={`/Newcompage/${slug}`}
+                      className="btn btn-ghost text-sm sm:text-lg md:text-xl gap-1 normal-case font-bold p-0 h-auto min-h-0 justify-start max-w-full"
+                      prefetch={true}
+                      onClick={() =>
+                        showNotification("Welcome to TheTribelab", "success")
+                      }
                     >
-                      <div
-                        className={` rounded-md overflow-hidden w-8 h-8 sm:w-10 sm:h-10 min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200  flex items-center justify-center`}
-                        title="compass"
-                      >
-                        <Compass size={25} className="text-primary" />
-                      </div>
-                      <span className="font-medium">Discover Communities</span>
+                      <span className="truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px]">
+                        {Name || "Loading..."}
+                      </span>
                     </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/communityform"
-                      className="flex items-center gap-2 hover:bg-base-200 rounded-lg py-2"
+                  ) : (
+                    <span className="text-sm sm:text-lg md:text-xl font-bold text-muted truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px]">
+                      {Name || "Invalid Community"}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Communities Dropdown */}
+              {session && (
+                <div className="dropdown dropdown-bottom dropdown-end flex-shrink-0 communities-dropdown">
+                  <div
+                    tabIndex={0}
+                    role="button"
+                    aria-label="Switch community"
+                    title="Switch community"
+                    className="btn btn-ghost btn-sm normal-case flex items-center gap-1 hover:bg-base-200 rounded-full"
+                    onClick={toggleDropdown}
+                  >
+                    <ChevronDown size={16} className="text-primary" />
+                  </div>
+                  {isDropdownOpen && (
+                    <ul
+                      tabIndex={0}
+                      className="dropdown-content z-[50] text-sm sm:text-base menu p-3 shadow-xl bg-base-100 rounded-box w-64 sm:w-72 border border-base-300 mt-2 left-1"
                     >
-                      <div
-                        className={` rounded-md overflow-hidden w-8 h-8 sm:w-10 sm:h-10 min-w-8 min-h-8 sm:min-w-10 sm:min-h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200  flex items-center justify-center`}
-                        title="compass"
-                      >
-                        <Plus size={25} className="text-primary" />
-                      </div>
-                      <span className="font-medium">Create Community</span>
-                    </Link>
-                  </li>
-                  {userCommunities.length > 0 ? (
-                    userCommunities.map((community) => (
-                      <li key={community._id}>
+                      <li>
                         <Link
-                          href={`/Newcompage/${community.slug}`}
-                          className="flex justify-between hover:bg-base-200 rounded-lg py-2"
+                          href="/community-feed"
+                          className="flex items-center gap-3 hover:bg-base-200 rounded-lg py-3 px-2 transition-colors duration-200"
+                          onClick={() => {
+                            showNotification(
+                              "Opening Community Discovery",
+                              "info"
+                            );
+                            closeDropdown();
+                          }}
                         >
-                          <div className="flex items-center gap-3">
-                            <CommunityIcon
-                              iconUrl={community.iconImageUrl}
-                              name={community.name}
-                              size="md"
-                              className="hover:scale-105 transition-transform duration-200"
-                              priority={true}
-                            />
-                            <span className="truncate font-medium">
-                              {community.name}
-                            </span>
+                          <div
+                            className="rounded-md bg-primary/10 w-10 h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200 flex items-center justify-center"
+                            title="Discover Communities"
+                          >
+                            <Compass size={20} className="text-primary" />
                           </div>
+                          <span className="font-medium truncate flex-1">
+                            Discover Communities
+                          </span>
                         </Link>
                       </li>
-                    ))
-                  ) : (
-                    <li className="px-4 py-2 text-sm text-muted">
-                      You haven't joined any other communities
-                    </li>
+                      <li>
+                        <Link
+                          href="/communityform"
+                          className="flex items-center gap-3 hover:bg-base-200 rounded-lg py-3 px-2 transition-colors duration-200"
+                          onClick={() => {
+                            showNotification(
+                              "Opening Community Creation",
+                              "info"
+                            );
+                            closeDropdown();
+                          }}
+                        >
+                          <div
+                            className="rounded-md bg-primary/10 w-10 h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200 flex items-center justify-center"
+                            title="Create Community"
+                          >
+                            <Plus size={20} className="text-primary" />
+                          </div>
+                          <span className="font-medium truncate flex-1">
+                            Create Community
+                          </span>
+                        </Link>
+                      </li>
+                      {/* Divider */}
+                      {(userCommunities.length > 0 || communitiesLoading) && (
+                        <>
+                          <li className="border-t border-base-200 mx-2 my-2"></li>
+                          <li>
+                            <div className="px-3 py-1 text-xs text-base-content/60 font-medium uppercase tracking-wide">
+                              Your Communities
+                            </div>
+                          </li>
+                        </>
+                      )}
+
+                      {/* Loading State */}
+                      {communitiesLoading && (
+                        <li>
+                          <div className="flex items-center justify-center py-4">
+                            <span className="loading loading-spinner loading-sm"></span>
+                            <span className="ml-2 text-sm">
+                              Loading communities...
+                            </span>
+                          </div>
+                        </li>
+                      )}
+
+                      {/* Error State */}
+                      {communitiesError && !communitiesLoading && (
+                        <li>
+                          <div className="px-4 py-3 text-sm text-error text-center">
+                            {communitiesError}
+                            <button
+                              onClick={() => window.location.reload()}
+                              className="btn btn-xs btn-outline btn-error ml-2"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        </li>
+                      )}
+
+                      {/* Communities List */}
+                      {!communitiesLoading &&
+                        !communitiesError &&
+                        userCommunities.length > 0 && (
+                          <ul className="space-y-1">
+                            {userCommunities.map((community) => (
+                              <li key={community._id}>
+                                <Link
+                                  href={`/Newcompage/${community.slug}`}
+                                  className="flex items-center gap-3 hover:bg-base-200 rounded-lg py-3 px-2 transition-colors duration-200"
+                                  onClick={() => {
+                                    showNotification(
+                                      `Switching to ${community.name}`,
+                                      "info"
+                                    );
+                                    closeDropdown();
+                                  }}
+                                >
+                                  <div
+                                    className="rounded-md bg-primary/10 w-10 h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200 flex items-center justify-center overflow-hidden"
+                                    title={community.name}
+                                  >
+                                    {(() => {
+                                      // Explicit inline sanitization for static analysis detection
+                                      const rawImageUrl =
+                                        community.iconImageUrl;
+                                      const sanitizedImageUrl = (() => {
+                                        if (
+                                          !rawImageUrl ||
+                                          typeof rawImageUrl !== "string"
+                                        )
+                                          return null;
+                                        const cleanUrl = rawImageUrl.trim();
+                                        // Block dangerous protocols explicitly
+                                        if (
+                                          cleanUrl
+                                            .toLowerCase()
+                                            .startsWith("javascript:") ||
+                                          cleanUrl
+                                            .toLowerCase()
+                                            .startsWith("data:") ||
+                                          cleanUrl
+                                            .toLowerCase()
+                                            .startsWith("vbscript:") ||
+                                          cleanUrl
+                                            .toLowerCase()
+                                            .startsWith("file:")
+                                        ) {
+                                          return null;
+                                        }
+                                        return sanitizeImageUrl(rawImageUrl);
+                                      })();
+
+                                      return sanitizedImageUrl ? (
+                                        <img
+                                          src={sanitizedImageUrl}
+                                          alt={`${community.name} icon`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <span className="text-primary text-sm font-bold">
+                                          {community.name
+                                            .charAt(0)
+                                            .toUpperCase()}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="truncate font-medium block text-sm">
+                                      {community.name}
+                                    </span>
+                                  </div>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                      {/* Empty State */}
+                      {!communitiesLoading &&
+                        !communitiesError &&
+                        userCommunities.length === 0 && (
+                          <li>
+                            <div className="px-4 py-3 text-sm text-base-content/60 text-center">
+                              You haven't joined any other communities
+                            </div>
+                          </li>
+                        )}
+                    </ul>
                   )}
-                </ul>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-1 justify-end px-2">
-            <div className="flex items-stretch gap-2">
+                </div>
+              )}
+            </div>
+
+            {/* Right side icons */}
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {/* Message Icon */}
               {session && <MessageIcon />}
               {/* Notification Icon */}
               {session && <NotificationIcon />}
+              {/* Theme Switcher */}
+              <ThemeSwitcher />
               <div className="dropdown dropdown-end">
                 <div
                   tabIndex={0}
@@ -385,8 +641,8 @@ function CommunityNav() {
                   {session ? (
                     <>
                       <li className="px-4 py-1">
-                        <span className="text-sm opacity-70">
-                          {session.user?.id}
+                        <span className="text-sm opacity-70 truncate">
+                          {session.user?.email || session.user?.name}
                         </span>
                       </li>
                       <li className="divider my-1"></li>
@@ -395,7 +651,7 @@ function CommunityNav() {
                           href={"/profile"}
                           className="px-4 py-2 hover:bg-base-200 block w-full"
                           onClick={() =>
-                            showNotification("Create your Community", "info")
+                            showNotification("Opening Profile", "info")
                           }
                         >
                           Profile
@@ -409,7 +665,7 @@ function CommunityNav() {
                             showNotification("Create your Community", "info")
                           }
                         >
-                          CreateCommunity
+                          Create Community
                         </Link>
                       </li>
                       <li>
@@ -424,14 +680,17 @@ function CommunityNav() {
                           Settings
                         </button>
                       </li>
-                      {isMember && slug && slug !== 'undefined' && (
+                      {isMember && slug && (
                         <li>
                           <button
                             type="button"
                             className="px-4 py-2 hover:bg-base-200 block w-full text-left"
                             onClick={() => {
                               openCommunitySettings(slug);
-                              showNotification("Opening Community Settings", "info");
+                              showNotification(
+                                "Opening Community Settings",
+                                "info"
+                              );
                             }}
                           >
                             Community Settings
@@ -443,7 +702,7 @@ function CommunityNav() {
                         <button
                           type="button"
                           onClick={handleSignOut}
-                          className="px-4 py-2 hover:bg-base-200 block w-full"
+                          className="px-4 py-2 hover:bg-base-200 block w-full text-left"
                         >
                           Sign Out
                         </button>
@@ -463,142 +722,167 @@ function CommunityNav() {
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="w-full overflow-x-auto">
-          {isMember && slug && slug !== 'undefined' ? (
-            <>
-              {/* Desktop navigation - centered on larger screens */}
-              <div className="hidden md:flex gap-2 justify-center">
-                <Link
-                  href={`/Newcompage/${slug}`}
-                  className={`btn text-lg btn-ghost ${
-                    isLinkActive(`/Newcompage/${slug}`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Community
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/Courses`}
-                  className={`btn text-lg btn-ghost ${
-                    isLinkActive(`/Newcompage/${slug}/Courses`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Courses
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/Calander`}
-                  className={`btn text-lg btn-ghost ${
-                    isLinkActive(`/Newcompage/${slug}/Calander`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Calander
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/about`}
-                  className={`btn text-lg btn-ghost ${
-                    isLinkActive(`/Newcompage/${slug}/about`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  About
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/members`}
-                  className={`btn text-lg btn-ghost ${
-                    isLinkActive(`/Newcompage/${slug}/members`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Members
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/leaderboard`}
-                  className={`btn text-lg btn-ghost ${
-                    isLinkActive(`/Newcompage/${slug}/leaderboard`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Leaderboard
-                </Link>
-              </div>
+          {/* Navigation Tabs */}
+          <div className="w-full border-t border-base-300">
+            {isMember && slug ? (
+              <>
+                {/* Desktop navigation - centered on larger screens */}
+                <div className="hidden md:flex gap-1 justify-start py-2">
+                  <Link
+                    href={`/Newcompage/${slug}`}
+                    className={`px-4 py-2 text-lg font-medium transition-all duration-200 border-b-3 relative ${
+                      isLinkActive(`/Newcompage/${slug}`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:border-base-content/30 hover:bg-base-200/30"
+                    }`}
+                  >
+                    Community
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/Courses`}
+                    className={`px-4 py-2 text-lg font-medium transition-all duration-200 border-b-3 relative ${
+                      isLinkActive(`/Newcompage/${slug}/Courses`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:border-base-content/30 hover:bg-base-200/30"
+                    }`}
+                  >
+                    Courses
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/Calander`}
+                    className={`px-4 py-2 text-lg font-medium transition-all duration-200 border-b-3 relative ${
+                      isLinkActive(`/Newcompage/${slug}/Calander`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:border-base-content/30 hover:bg-base-200/30"
+                    }`}
+                  >
+                    Events
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/about`}
+                    className={`px-4 py-2 text-lg font-medium transition-all duration-200 border-b-3 relative ${
+                      isLinkActive(`/Newcompage/${slug}/about`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:border-base-content/30 hover:bg-base-200/30"
+                    }`}
+                  >
+                    About
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/members`}
+                    className={`px-4 py-2 text-lg font-medium transition-all duration-200 border-b-3 relative ${
+                      isLinkActive(`/Newcompage/${slug}/members`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:border-base-content/30 hover:bg-base-200/30"
+                    }`}
+                  >
+                    Members
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/leaderboard`}
+                    className={`px-4 py-2 text-lg font-medium transition-all duration-200 border-b-3 relative ${
+                      isLinkActive(`/Newcompage/${slug}/leaderboard`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:border-base-content/30 hover:bg-base-200/30"
+                    }`}
+                  >
+                    Leaderboard
+                  </Link>
+                </div>
 
-              {/* Mobile navigation - scrollable, centered content */}
-              <div className="md:hidden flex gap-1 overflow-x-auto pb-2 scrollbar-thin justify-center">
-                <Link
-                  href={`/Newcompage/${slug}`}
-                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
-                    isLinkActive(`/Newcompage/${slug}`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Community
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/Courses`}
-                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
-                    isLinkActive(`/Newcompage/${slug}/Courses`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Courses
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/Calander`}
-                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
-                    isLinkActive(`/Newcompage/${slug}/Calander`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Calander
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/about`}
-                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
-                    isLinkActive(`/Newcompage/${slug}/about`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  About
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/members`}
-                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
-                    isLinkActive(`/Newcompage/${slug}/members`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Members
-                </Link>
-                <Link
-                  href={`/Newcompage/${slug}/leaderboard`}
-                  className={`btn btn-sm text-sm btn-ghost whitespace-nowrap ${
-                    isLinkActive(`/Newcompage/${slug}/leaderboard`)
-                      ? "bg-primary text-primary-content"
-                      : "hover:text-primary"
-                  }`}
-                >
-                  Leaderboard
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div></div>
-          )}
+                {/* Mobile navigation - full width, icon-based */}
+                <div className="md:hidden flex w-full">
+                  <Link
+                    href={`/Newcompage/${slug}`}
+                    className={`flex-1 flex flex-col items-center py-2 px-1 transition-all duration-200 border-b-3 ${
+                      isLinkActive(`/Newcompage/${slug}`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:bg-base-200/30"
+                    }`}
+                    title="Community"
+                  >
+                    <Home size={16} />
+                    <span className="text-sm mt-1 truncate font-medium">
+                      Home
+                    </span>
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/Courses`}
+                    className={`flex-1 flex flex-col items-center py-2 px-1 transition-all duration-200 border-b-3 ${
+                      isLinkActive(`/Newcompage/${slug}/Courses`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:bg-base-200/30"
+                    }`}
+                    title="Courses"
+                  >
+                    <BookOpen size={16} />
+                    <span className="text-sm mt-1 truncate font-medium">
+                      Courses
+                    </span>
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/Calander`}
+                    className={`flex-1 flex flex-col items-center py-2 px-1 transition-all duration-200 border-b-3 ${
+                      isLinkActive(`/Newcompage/${slug}/Calander`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:bg-base-200/30"
+                    }`}
+                    title="Events"
+                  >
+                    <Calendar size={16} />
+                    <span className="text-sm mt-1 truncate font-medium">
+                      Events
+                    </span>
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/about`}
+                    className={`flex-1 flex flex-col items-center py-2 px-1 transition-all duration-200 border-b-3 ${
+                      isLinkActive(`/Newcompage/${slug}/about`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:bg-base-200/30"
+                    }`}
+                    title="About"
+                  >
+                    <Info size={16} />
+                    <span className="text-sm mt-1 truncate font-medium">
+                      About
+                    </span>
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/members`}
+                    className={`flex-1 flex flex-col items-center py-2 px-1 transition-all duration-200 border-b-3 ${
+                      isLinkActive(`/Newcompage/${slug}/members`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:bg-base-200/30"
+                    }`}
+                    title="Members"
+                  >
+                    <Users size={16} />
+                    <span className="text-sm mt-1 truncate font-medium">
+                      Members
+                    </span>
+                  </Link>
+                  <Link
+                    href={`/Newcompage/${slug}/leaderboard`}
+                    className={`flex-1 flex flex-col items-center py-2 px-1 transition-all duration-200 border-b-3 ${
+                      isLinkActive(`/Newcompage/${slug}/leaderboard`)
+                        ? "text-base-content border-base-content font-semibold bg-base-200/50"
+                        : "text-base-content/70 hover:text-base-content border-transparent hover:bg-base-200/30"
+                    }`}
+                    title="Leaderboard"
+                  >
+                    <Trophy size={16} />
+                    <span className="text-sm mt-1 truncate font-medium">
+                      Ranking
+                    </span>
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <div className="py-2"></div>
+            )}
+          </div>
         </div>
       </div>
     </div>

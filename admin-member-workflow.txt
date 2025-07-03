@@ -1,0 +1,175 @@
+# ADMIN-MEMBER WORKFLOW DOCUMENTATION
+# TheTribeLab Community Platform
+
+## OVERVIEW
+This platform connects ADMINS (community creators) with MEMBERS (community participants).
+Admins create and manage communities, Members join and participate.
+
+================================================================================
+## ADMIN WORKFLOW
+================================================================================
+
+### PHASE 1: COMMUNITY SETUP
+1. Admin creates community account
+2. Sets community name, description, images
+3. Chooses community type:
+   - FREE: No payment required
+   - PAID: Members pay to join
+
+### PHASE 2: PAYMENT CONFIGURATION (For Paid Communities)
+1. Admin connects their own Razorpay/Stripe account
+2. Sets pricing: Monthly/Yearly rates
+3. Creates payment plans
+4. Admin receives 100% of member payments directly
+
+### PHASE 3: COMMUNITY CONFIGURATION
+1. Sets community visibility:
+   - PRIVATE: Requires admin approval
+   - PUBLIC: Auto-join after payment
+2. Creates join questions for member screening
+3. Configures community settings
+
+### PHASE 4: COMMUNITY MANAGEMENT
+1. Activates 14-day FREE TRIAL for platform features
+2. Manages member requests (approve/reject)
+3. Assigns sub-admin roles to trusted members
+4. Updates community content and settings
+5. Views analytics and member activity
+
+### PHASE 5: SUBSCRIPTION MANAGEMENT
+1. Monitors trial expiration (gets 7,3,1 day reminders)
+2. Pays for platform subscription after trial
+3. Community gets SUSPENDED if payment fails
+4. Reactivates by completing payment
+
+================================================================================
+## MEMBER WORKFLOW
+================================================================================
+
+### PHASE 1: DISCOVERY
+1. Member browses available communities
+2. Views community details, pricing, description
+3. Checks requirements and join questions
+
+### PHASE 2: JOINING PROCESS
+
+#### FOR FREE COMMUNITIES:
+1. Fills out admin-set join questions
+2. Submits join request
+3. Waits for admin approval (if private)
+4. Gets immediate access (if public)
+
+#### FOR PAID COMMUNITIES:
+1. Views available pricing plans
+2. Selects monthly/yearly subscription
+3. Completes payment through Razorpay/Stripe
+4. Gets immediate community access after payment
+5. Payment goes directly to community admin
+
+### PHASE 3: COMMUNITY PARTICIPATION
+1. Access community content and discussions
+2. Send messages to other members
+3. Participate in community events
+4. Receive notifications about community updates
+5. Manage personal community settings
+
+================================================================================
+## PERMISSION LEVELS
+================================================================================
+
+### ADMIN (Full Control)
+- Create/delete community
+- Manage all members
+- Set pricing and payment settings
+- Assign sub-admin roles
+- View all analytics
+- Handle join requests
+
+### SUB-ADMIN (Limited Control)
+- Manage community content
+- Moderate discussions
+- Handle join requests
+- View basic analytics
+- Cannot change payment settings
+
+### MEMBER (Participation Only)
+- View community content
+- Participate in discussions
+- Send messages to other members
+- Update personal settings
+- Leave community
+
+================================================================================
+## PAYMENT MODEL
+================================================================================
+
+### ADMIN-TO-PLATFORM PAYMENTS:
+- Admin pays $29/month for platform subscription
+- 14-day free trial available
+- Community suspended if payment fails
+- Direct payment to platform (TheTribeLab)
+
+### MEMBER-TO-ADMIN PAYMENTS:
+- Members pay admin-set prices for community access
+- Payments processed through admin's payment gateway
+- Admin receives 100% of member payments
+- Platform takes no commission from member payments
+
+================================================================================
+## NOTIFICATION SYSTEM
+================================================================================
+
+### ADMIN NOTIFICATIONS:
+- Trial expiration warnings (7, 3, 1 days)
+- New member join requests
+- Payment confirmations/failures
+- Community activity updates
+- Platform subscription reminders
+
+### MEMBER NOTIFICATIONS:
+- Join request approval/rejection
+- New community posts and updates
+- Messages from other members
+- Community events and announcements
+- Payment confirmations
+
+================================================================================
+## TRIAL & SUBSCRIPTION SYSTEM
+================================================================================
+
+### TRIAL MANAGEMENT:
+1. Every admin gets ONE 14-day free trial
+2. Trial covers all platform features
+3. Automatic reminders before expiration
+4. Community suspended when trial expires
+5. Must pay to reactivate after suspension
+
+### SUBSCRIPTION LIFECYCLE:
+1. TRIAL → Active trial period (14 days)
+2. PAID → Active subscription ($29/month)
+3. EXPIRED → Payment failed, community suspended
+4. REACTIVATED → Payment completed, community restored
+
+================================================================================
+## KEY WORKFLOW POINTS
+================================================================================
+
+1. **One Admin Per Community**: Each community has one primary admin
+2. **Direct Member Payments**: Members pay admins directly, not the platform
+3. **Platform Subscription**: Admins pay platform for community management tools
+4. **Trial Once Per Admin**: Each admin can only use free trial once
+5. **Automatic Suspension**: Communities auto-suspend when payments fail
+6. **Role-Based Access**: Different permissions for admin/sub-admin/member
+7. **Join Question System**: Admins screen members through custom questions
+8. **Real-Time Notifications**: Instant updates for all community activities
+
+================================================================================
+## BUSINESS MODEL SUMMARY
+================================================================================
+
+PLATFORM REVENUE: Admin subscriptions ($29/month per community)
+ADMIN REVENUE: Member payments (100% to admin, admin-set pricing)
+MEMBER COST: Community-specific fees set by each admin
+
+This creates a marketplace where admins monetize their communities while 
+paying the platform for management tools and infrastructure. 

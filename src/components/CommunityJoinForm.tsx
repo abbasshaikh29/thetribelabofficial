@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import CommunityJoinPayment from "./community/CommunityJoinPayment";
+import PaymentGatewayDialog from "./community/PaymentGatewayDialog";
 
 interface CommunityJoinFormProps {
   communityId: string;
@@ -23,6 +23,7 @@ export default function CommunityJoinForm({
   const [error, setError] = useState<string | null>(null);
 
   const [requiresPayment, setRequiresPayment] = useState(false);
+  const [communityData, setCommunityData] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +48,14 @@ export default function CommunityJoinForm({
       if (!response.ok) {
         // Check if payment is required
         if (response.status === 402 && data.requiresPayment) {
+          // Fetch community data for payment dialog
+          const communityResponse = await fetch(
+            `/api/community/${communitySlug}`
+          );
+          if (communityResponse.ok) {
+            const community = await communityResponse.json();
+            setCommunityData(community);
+          }
           setRequiresPayment(true);
           return;
         }
@@ -73,13 +82,24 @@ export default function CommunityJoinForm({
     return <div>Please sign in to join this community</div>;
   }
 
-  // If payment is required, show the payment component
-  if (requiresPayment) {
+  // If payment is required, show the payment dialog
+  if (requiresPayment && communityData) {
     return (
-      <CommunityJoinPayment
+      <PaymentGatewayDialog
+        isOpen={requiresPayment}
+        onClose={() => setRequiresPayment(false)}
         communityId={communityId}
         communitySlug={communitySlug}
         communityName={communityName}
+        price={communityData.price || 0}
+        currency={communityData.currency}
+        pricingType={communityData.pricingType}
+        onSuccess={() => {
+          setRequiresPayment(false);
+          if (onSuccess) {
+            onSuccess();
+          }
+        }}
       />
     );
   }
@@ -87,25 +107,43 @@ export default function CommunityJoinForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base">
+        <div
+          className="border px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base"
+          style={{
+            backgroundColor: "var(--bg-tertiary)",
+            borderColor: "var(--brand-error)",
+            color: "var(--brand-error)",
+          }}
+        >
           {error}
         </div>
       )}
 
       {questions.length === 0 ? (
-        <div className="text-gray-700 mb-3 text-sm sm:text-base">
+        <div
+          className="mb-3 text-sm sm:text-base"
+          style={{ color: "var(--text-secondary)" }}
+        >
           This community doesn't require any questions to be answered to join.
         </div>
       ) : (
         questions.map((question, index) => (
           <div key={index} className="space-y-1 sm:space-y-2">
-            <label className="block text-xs sm:text-sm font-medium text-gray-700">
+            <label
+              className="block text-xs sm:text-sm font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
               {question}
             </label>
             <textarea
               value={answers[index] || ""}
               onChange={(e) => handleAnswerChange(index, e.target.value)}
-              className="w-full px-2 py-1 sm:px-3 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              className="w-full px-2 py-1 sm:px-3 sm:py-2 border rounded-md shadow-sm focus:outline-none text-sm"
+              style={{
+                backgroundColor: "var(--input-bg)",
+                borderColor: "var(--input-border)",
+                color: "var(--text-primary)",
+              }}
               rows={2}
               required
               placeholder={`Enter your answer for: ${question}`}
@@ -117,7 +155,22 @@ export default function CommunityJoinForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center py-1 px-3 sm:py-2 sm:px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+        className="w-full flex justify-center py-1 px-3 sm:py-2 sm:px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 transition-colors duration-200"
+        style={{
+          backgroundColor: loading ? "var(--neutral)" : "var(--brand-primary)",
+          color: "var(--primary-content)",
+          borderColor: loading ? "var(--neutral)" : "var(--brand-primary)",
+        }}
+        onMouseEnter={(e) => {
+          if (!loading) {
+            e.currentTarget.style.backgroundColor = "var(--brand-secondary)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!loading) {
+            e.currentTarget.style.backgroundColor = "var(--brand-primary)";
+          }
+        }}
       >
         {loading ? "Sending request..." : "Send Join Request"}
       </button>

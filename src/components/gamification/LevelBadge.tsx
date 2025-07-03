@@ -6,7 +6,12 @@ interface LevelBadgeProps {
   level: number;
   levelName?: string;
   size?: "sm" | "md" | "lg";
-  position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "inline";
+  position?:
+    | "bottom-right"
+    | "bottom-left"
+    | "top-right"
+    | "top-left"
+    | "inline";
   className?: string;
 }
 
@@ -50,7 +55,7 @@ const LevelBadge: React.FC<LevelBadgeProps> = ({
         text-white font-bold
         border-2 border-white
         shadow-lg
-        z-10
+        z-5
         ${className}
       `}
       title={levelName ? `${levelName} (Level ${level})` : `Level ${level}`}

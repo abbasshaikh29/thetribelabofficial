@@ -3,6 +3,22 @@
 import React from "react";
 import { convertS3UrlToR2, isS3Url, isR2Url } from "@/utils/s3-to-r2-migration";
 
+// Helper to sanitize image URLs to prevent XSS
+function sanitizeImgUrl(url?: string): string {
+  if (!url || typeof url !== "string") return "/default-avatar.png";
+  url = url.trim();
+  // Only allow http, https, or relative URLs
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("/")
+  ) {
+    return url;
+  }
+  // Fallback to a safe default
+  return "/default-avatar.png";
+}
+
 interface ProfileImageDisplayProps {
   imageUrl?: string;
   username?: string;
@@ -17,8 +33,11 @@ const ProfileImageDisplay: React.FC<ProfileImageDisplayProps> = ({
   className = "",
 }) => {
   // Convert S3 URLs to R2 URLs if needed
-  const processedImageUrl =
+  let processedImageUrl =
     imageUrl && isS3Url(imageUrl) ? convertS3UrlToR2(imageUrl) : imageUrl;
+
+  // Sanitize the URL to prevent XSS
+  processedImageUrl = sanitizeImgUrl(processedImageUrl);
 
   // Check if it's an R2 URL
   const isR2Image = imageUrl ? isR2Url(imageUrl) : false;
@@ -49,7 +68,7 @@ const ProfileImageDisplay: React.FC<ProfileImageDisplayProps> = ({
 
   return (
     <div
-      className={`rounded-full overflow-hidden bg-gray-200 ${sizeClasses[size]} ${className}`}
+      className={`rounded-full overflow-hidden bg-primary/10 ${sizeClasses[size]} ${className}`}
     >
       {processedImageUrl ? (
         // Always use a regular img tag for profile images to avoid Next.js Image optimization issues

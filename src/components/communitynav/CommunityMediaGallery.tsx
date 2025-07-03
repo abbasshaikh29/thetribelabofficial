@@ -4,6 +4,54 @@ import { useState, useEffect } from "react";
 import { CommunityMediaItem } from "@/models/Community";
 import { Image, Video, X, ExternalLink, Maximize2 } from "lucide-react";
 
+// Function to safely validate media URLs
+const sanitizeMediaUrl = (url?: string): string | null => {
+  if (!url || typeof url !== "string") return null;
+
+  // Remove any leading/trailing whitespace
+  const cleanUrl = url.trim();
+
+  // Block dangerous protocols
+  const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
+  const lowerCaseUrl = cleanUrl.toLowerCase();
+
+  if (
+    dangerousProtocols.some((protocol) => lowerCaseUrl.startsWith(protocol))
+  ) {
+    return null;
+  }
+
+  // Only allow http, https, or relative URLs
+  if (
+    cleanUrl.startsWith("http://") ||
+    cleanUrl.startsWith("https://") ||
+    cleanUrl.startsWith("/")
+  ) {
+    try {
+      // For absolute URLs, validate them further
+      if (cleanUrl.startsWith("http")) {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+          return cleanUrl;
+        }
+      } else {
+        // For relative URLs, ensure they don't contain dangerous patterns
+        if (
+          !lowerCaseUrl.includes("javascript:") &&
+          !lowerCaseUrl.includes("vbscript:")
+        ) {
+          return cleanUrl;
+        }
+      }
+    } catch (e) {
+      // Invalid URL format
+      return null;
+    }
+  }
+
+  return null;
+};
+
 interface CommunityMediaGalleryProps {
   slug: string;
 }
@@ -97,33 +145,49 @@ export default function CommunityMediaGallery({
             className="w-full rounded-lg overflow-hidden bg-base-100 shadow-sm cursor-pointer"
             onClick={() => openMediaViewer(featuredMedia)}
           >
-            {featuredMedia.type === "image" ? (
-              <div className="relative group aspect-[21/9]">
-                <img
-                  src={featuredMedia.url}
-                  alt={featuredMedia.title || "Community image"}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Maximize2 className="text-white h-8 w-8" />
-                </div>
-              </div>
-            ) : (
-              <div className="relative group aspect-[21/9]">
-                <video
-                  src={featuredMedia.url}
-                  className="w-full h-full object-cover"
-                  muted
-                  playsInline
-                />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Maximize2 className="text-white h-8 w-8" />
-                </div>
-                <div className="absolute bottom-2 right-2 bg-black/70 text-white p-1 rounded">
-                  <Video className="h-4 w-4" />
-                </div>
-              </div>
-            )}
+            {featuredMedia.type === "image"
+              ? (() => {
+                  const safeUrl = sanitizeMediaUrl(featuredMedia.url);
+                  return safeUrl ? (
+                    <div className="relative group aspect-[21/9]">
+                      <img
+                        src={safeUrl}
+                        alt={featuredMedia.title || "Community image"}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Maximize2 className="text-white h-8 w-8" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="aspect-[21/9] bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-500">Invalid image URL</span>
+                    </div>
+                  );
+                })()
+              : (() => {
+                  const safeUrl = sanitizeMediaUrl(featuredMedia.url);
+                  return safeUrl ? (
+                    <div className="relative group aspect-[21/9]">
+                      <video
+                        src={safeUrl}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Maximize2 className="text-white h-8 w-8" />
+                      </div>
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white p-1 rounded">
+                        <Video className="h-4 w-4" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="aspect-[21/9] bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-500">Invalid video URL</span>
+                    </div>
+                  );
+                })()}
           </div>
         </div>
       )}
@@ -139,25 +203,58 @@ export default function CommunityMediaGallery({
               }`}
               onClick={() => setAsFeatured(item)}
             >
-              {item.type === "image" ? (
-                <img
-                  src={item.url}
-                  alt={item.title || "Community image"}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="relative w-full h-full">
-                  <video
-                    src={item.url}
-                    className="w-full h-full object-cover"
-                    muted
-                    playsInline
-                  />
-                  <div className="absolute bottom-1 right-1 bg-black/70 text-white p-0.5 rounded">
-                    <Video className="h-3 w-3" />
-                  </div>
-                </div>
-              )}
+              {item.type === "image"
+                ? (() => {
+                    // Explicit inline sanitization for static analysis detection
+                    const rawImageUrl = item.url;
+                    const sanitizedImageUrl = (() => {
+                      if (!rawImageUrl || typeof rawImageUrl !== "string")
+                        return null;
+                      const cleanUrl = rawImageUrl.trim();
+                      // Block dangerous protocols explicitly
+                      if (
+                        cleanUrl.toLowerCase().startsWith("javascript:") ||
+                        cleanUrl.toLowerCase().startsWith("data:") ||
+                        cleanUrl.toLowerCase().startsWith("vbscript:") ||
+                        cleanUrl.toLowerCase().startsWith("file:")
+                      ) {
+                        return null;
+                      }
+                      return sanitizeMediaUrl(rawImageUrl);
+                    })();
+
+                    return sanitizedImageUrl ? (
+                      <img
+                        src={sanitizedImageUrl}
+                        alt={item.title || "Community image"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                        <span className="text-gray-500 text-xs">Invalid</span>
+                      </div>
+                    );
+                  })()
+                : (() => {
+                    const safeUrl = sanitizeMediaUrl(item.url);
+                    return safeUrl ? (
+                      <div className="relative w-full h-full">
+                        <video
+                          src={safeUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                        />
+                        <div className="absolute bottom-1 right-1 bg-black/70 text-white p-0.5 rounded">
+                          <Video className="h-3 w-3" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                        <span className="text-gray-500 text-xs">Invalid</span>
+                      </div>
+                    );
+                  })()}
             </div>
           ))}
         </div>
@@ -178,20 +275,36 @@ export default function CommunityMediaGallery({
           </div>
 
           <div className="max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            {selectedMedia.type === "image" ? (
-              <img
-                src={selectedMedia.url}
-                alt={selectedMedia.title || "Community image"}
-                className="w-full h-auto max-h-[80vh] object-contain mx-auto"
-              />
-            ) : (
-              <video
-                src={selectedMedia.url}
-                controls
-                autoPlay
-                className="w-full h-auto max-h-[80vh] object-contain mx-auto"
-              />
-            )}
+            {selectedMedia.type === "image"
+              ? (() => {
+                  const safeUrl = sanitizeMediaUrl(selectedMedia.url);
+                  return safeUrl ? (
+                    <img
+                      src={safeUrl}
+                      alt={selectedMedia.title || "Community image"}
+                      className="w-full h-auto max-h-[80vh] object-contain mx-auto"
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-500">Invalid image URL</span>
+                    </div>
+                  );
+                })()
+              : (() => {
+                  const safeUrl = sanitizeMediaUrl(selectedMedia.url);
+                  return safeUrl ? (
+                    <video
+                      src={safeUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-auto max-h-[80vh] object-contain mx-auto"
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-500">Invalid video URL</span>
+                    </div>
+                  );
+                })()}
           </div>
         </div>
       )}

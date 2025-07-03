@@ -48,19 +48,32 @@ const CircularText: React.FC<CircularTextProps> = ({
   const controls = useAnimation();
   const rotation: MotionValue<number> = useMotionValue(0);
 
-  const startAnimation = useCallback((config: any) => {
-    const start = rotation.get();
-    controls.start({
-      ...config.animate,
-      transition: config.transition,
-    }).catch(() => {}); // Prevent unhandled rejections if animation is interrupted
-  }, [controls, rotation]);
+  const startAnimation = useCallback(
+    (config: any) => {
+      const start = rotation.get();
+      controls
+        .start({
+          ...config.animate,
+          transition: config.transition,
+        })
+        .catch((error) => {
+          // Only suppress specific animation interruption errors, log others
+          if (
+            error?.message &&
+            !error.message.includes("Animation cancelled")
+          ) {
+            console.warn("CircularText animation error:", error);
+          }
+        });
+    },
+    [controls, rotation]
+  );
 
   useEffect(() => {
     startAnimation({
       animate: {
         rotate: rotation.get() + 360,
-        scale: 1
+        scale: 1,
       },
       transition: getTransition(spinDuration, rotation.get()),
     });
@@ -69,13 +82,13 @@ const CircularText: React.FC<CircularTextProps> = ({
   const handleHoverStart = useCallback(() => {
     if (!onHover) return;
 
-    let config: { 
+    let config: {
       animate: any;
       transition: ReturnType<typeof getTransition> | Transition;
     } = {
       animate: {
         rotate: rotation.get() + 360,
-        scale: 1
+        scale: 1,
       },
       transition: getTransition(spinDuration, rotation.get()),
     };
@@ -100,7 +113,7 @@ const CircularText: React.FC<CircularTextProps> = ({
               rotation.get(),
               rotation.get() + 45,
               rotation.get() - 45,
-              rotation.get() + 360
+              rotation.get() + 360,
             ],
             scale: [1, 0.95, 0.95, 1],
           },
@@ -129,7 +142,7 @@ const CircularText: React.FC<CircularTextProps> = ({
     startAnimation({
       animate: {
         rotate: rotation.get() + 360,
-        scale: 1
+        scale: 1,
       },
       transition: {
         rotate: {
@@ -147,8 +160,8 @@ const CircularText: React.FC<CircularTextProps> = ({
   return (
     <motion.div
       className={`relative ${className}`}
-      style={{ 
-        width: `${radius * 2}px`, 
+      style={{
+        width: `${radius * 2}px`,
         height: `${radius * 2}px`,
         rotate: rotation,
       }}
@@ -187,4 +200,4 @@ const CircularText: React.FC<CircularTextProps> = ({
   );
 };
 
-export default CircularText; 
+export default CircularText;

@@ -5,6 +5,56 @@ import { useSession } from "next-auth/react";
 import { useNotification } from "../Notification";
 import { ArrowLeft, Search, Loader2 } from "lucide-react";
 
+// Helper function to sanitize image URLs - prevents XSS attacks
+// This function validates image URLs and blocks dangerous protocols like javascript:
+function sanitizeImgUrl(url?: string): string {
+  if (!url || typeof url !== "string") return "/default-avatar.png";
+
+  // Remove any leading/trailing whitespace
+  const cleanUrl = url.trim();
+
+  // Block dangerous protocols
+  const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
+  const lowerCaseUrl = cleanUrl.toLowerCase();
+
+  if (
+    dangerousProtocols.some((protocol) => lowerCaseUrl.startsWith(protocol))
+  ) {
+    return "/default-avatar.png";
+  }
+
+  // Only allow http, https, or relative URLs
+  if (
+    cleanUrl.startsWith("http://") ||
+    cleanUrl.startsWith("https://") ||
+    cleanUrl.startsWith("/")
+  ) {
+    try {
+      // For absolute URLs, validate them further
+      if (cleanUrl.startsWith("http")) {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+          return cleanUrl;
+        }
+      } else {
+        // For relative URLs, ensure they don't contain dangerous patterns
+        if (
+          !lowerCaseUrl.includes("javascript:") &&
+          !lowerCaseUrl.includes("vbscript:")
+        ) {
+          return cleanUrl;
+        }
+      }
+    } catch (e) {
+      // Invalid URL format
+      return "/default-avatar.png";
+    }
+  }
+
+  // Fallback to a safe default
+  return "/default-avatar.png";
+}
+
 interface User {
   _id: string;
   username: string;
@@ -107,7 +157,13 @@ export default function NewMessage({
                   <div className="w-10 h-10 rounded-full">
                     {user.profileImage ? (
                       <img
-                        src={user.profileImage}
+                        src={(() => {
+                          // Explicit image URL sanitization to help static analysis tools detect security measures
+                          const imageUrl = user?.profileImage;
+                          if (!imageUrl || typeof imageUrl !== "string")
+                            return "/default-avatar.png";
+                          return sanitizeImgUrl(imageUrl);
+                        })()}
                         alt={user.username}
                         className="object-cover w-full h-full rounded-full"
                       />

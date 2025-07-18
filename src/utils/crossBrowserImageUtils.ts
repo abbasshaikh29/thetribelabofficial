@@ -60,15 +60,45 @@ export const isImageValid = (url: string): Promise<boolean> => {
 };
 
 /**
+ * Generates a random color from a predefined palette
+ * @returns A random color hex code
+ */
+const getRandomColor = (): string => {
+  const colors = [
+    "#FF6B6B", // Red
+    "#4ECDC4", // Teal
+    "#45B7D1", // Blue
+    "#96CEB4", // Green
+    "#FFEAA7", // Yellow
+    "#DDA0DD", // Plum
+    "#98D8C8", // Mint
+    "#F7DC6F", // Light yellow
+    "#BB8FCE", // Light purple
+    "#85C1E9", // Light blue
+    "#F8C471", // Orange
+    "#82E0AA", // Light green
+    "#F1948A", // Pink
+    "#85C1E9", // Sky blue
+    "#D2B4DE", // Lavender
+    "#AED6F1", // Powder blue
+    "#A9DFBF", // Sage
+    "#F9E79F", // Cream
+    "#FADBD8", // Blush
+    "#D5DBDB", // Silver
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
+/**
  * Creates a data URL for a fallback avatar with the first letter of the name
  * @param name The name to use for the fallback
- * @param bgColor Background color (default: primary color)
+ * @param bgColor Background color (if not provided, uses random color)
  * @param textColor Text color (default: white)
  * @returns A data URL for the fallback avatar
  */
 export const createFallbackAvatar = (
   name: string = "?",
-  bgColor: string = "#6b21a8", // Halloween purple
+  bgColor?: string,
   textColor: string = "#ffffff"
 ): string => {
   // For server-side rendering, return empty string
@@ -81,8 +111,11 @@ export const createFallbackAvatar = (
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
 
+  // Use provided background color or generate a random one
+  const backgroundColor = bgColor || getRandomColor();
+
   // Draw background
-  ctx.fillStyle = bgColor;
+  ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw text

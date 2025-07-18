@@ -103,7 +103,7 @@ const CommunityIcon: React.FC<CommunityIconProps> = ({
       <img
         src={processedSrc}
         alt={`${name} icon`}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover rounded-md"
         loading={priority ? "eager" : "lazy"}
         onLoad={handleImageLoad}
         onError={handleImageError}

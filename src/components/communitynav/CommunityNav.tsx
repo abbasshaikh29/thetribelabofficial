@@ -377,7 +377,7 @@ function CommunityNav() {
           <div className="flex justify-between items-center w-full pr-2 sm:pr-4 md:pr-8 py-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 rounded-md">
                   <CommunityIcon
                     iconUrl={iconImage}
                     name={Name}
@@ -529,7 +529,7 @@ function CommunityNav() {
                                   }}
                                 >
                                   <div
-                                    className="rounded-md bg-primary/10 w-10 h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200 flex items-center justify-center overflow-hidden"
+                                    className="rounded-md bg-primary/10 w-10 h-10 flex-shrink-0 hover:scale-105 transition-transform duration-200 flex items-center justify-center overflow-hidden border-2 border-primary/20"
                                     title={community.name}
                                   >
                                     {(() => {
@@ -567,7 +567,7 @@ function CommunityNav() {
                                         <img
                                           src={sanitizedImageUrl}
                                           alt={`${community.name} icon`}
-                                          className="w-full h-full object-cover"
+                                          className="w-full h-full object-cover rounded-md overflow-hidden"
                                         />
                                       ) : (
                                         <span className="text-primary text-sm font-bold">

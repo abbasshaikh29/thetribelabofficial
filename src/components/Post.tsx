@@ -896,7 +896,7 @@ export default function PostCard({
         >
           <div className="flex">
             <div className="w-3/4">
-              <h2 className="font-bold text-2xl mb-2">{post.title}</h2>
+              <h2 className="text-[20px] font-bold mb-2">{post.title}</h2>
               <div className="space-y-2">
                 {content.map(
                   (item: { type: string; content: string }, index: number) => (
@@ -1124,7 +1124,7 @@ export default function PostCard({
             </DropdownMenu>
           </div>
 
-          <h2 className="text-xl font-bold mb-4">{post.title}</h2>
+          <h2 className="text-[20px] font-bold mb-4">{post.title}</h2>
           <div className="space-y-4 mb-6">
             {content.map(
               (item: { type: string; content: string }, index: number) => (

@@ -3,10 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
+import { useSession } from "next-auth/react";
+import { User } from "lucide-react";
+import ProfileAvatar from "./ProfileAvatar";
 
 export default function MainNavigation() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   
   const navItems = [
     { href: "/community", label: "Community" },
@@ -54,18 +57,19 @@ export default function MainNavigation() {
           </div>
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="relative w-8 h-8 rounded-full overflow-hidden">
-                <Image
-                  src="/placeholder-avatar.jpg"
-                  alt="User profile"
-                  fill
-                  className="object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "/placeholder-avatar.jpg";
-                  }}
+              {session?.user ? (
+                <ProfileAvatar
+                  imageUrl={session.user.profileImage || session.user.image}
+                  name={session.user.name || session.user.username}
+                  email={session.user.email}
+                  size="sm"
+                  className="w-8 h-8"
                 />
-              </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center">
+                  <User className="w-4 h-4 text-base-content/60" />
+                </div>
+              )}
             </div>
           </div>
         </div>

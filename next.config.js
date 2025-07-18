@@ -156,7 +156,7 @@ const nextConfig = {
           },
           {
             key: "Cross-Origin-Embedder-Policy",
-            value: "require-corp",
+            value: "unsafe-none",
           },
           {
             key: "Cross-Origin-Opener-Policy",
@@ -164,7 +164,7 @@ const nextConfig = {
           },
           {
             key: "Cross-Origin-Resource-Policy",
-            value: "same-site",
+            value: "cross-origin",
           },
           {
             key: "Content-Security-Policy",

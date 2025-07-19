@@ -83,6 +83,38 @@ body {
   padding: 0 1rem;
 }
 
+/* Fix for card overlapping issues */
+@layer components {
+  .spotlight-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .spotlight-card-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+  }
+  
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .spotlight-card-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1025px) {
+    .spotlight-card-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
 /* Fix for inconsistent form elements */
 input,
 textarea,

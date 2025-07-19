@@ -97,7 +97,7 @@ function Hero() {
 
   return (
     <div
-      className="min-h-[calc(100vh-var(--header-height,80px)-var(--footer-height,80px))] flex flex-col items-center justify-center relative py-10 px-4 transition-colors duration-300"
+      className="min-h-[calc(100vh-var(--header-height,80px)-var(--footer-height,80px))] mb-20 flex flex-col items-center justify-center relative py-10 px-4 transition-colors duration-300"
       style={{
         backgroundColor: "var(--bg-primary)",
         color: "var(--text-primary)"

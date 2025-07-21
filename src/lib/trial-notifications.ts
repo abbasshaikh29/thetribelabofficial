@@ -3,7 +3,7 @@ import { dbconnect } from './db';
 import { sendTrialReminderEmail } from './resend';
 import { User } from '@/models/User';
 import { createNotification } from './notifications';
-import { TrialHistory } from '@/models/TrialHistory';
+import { TrialHistory, ITrialHistory } from '@/models/TrialHistory';
 import { processExpiredTrials } from './trial-expiration-service';
 import { EmailQueue } from './email-queue';
 

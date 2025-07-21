@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbconnect } from "@/lib/db";
 import { createPlan } from "@/lib/razorpay";
-import { CommunitySubscriptionPlan } from "@/models/PaymentPlan";
+import { CommunitySubscriptionPlan, ICommunitySubscriptionPlan } from "@/models/PaymentPlan";
 
 // POST /api/fix-payment-plans - Fix payment plans by removing invalid ones and creating valid ones
 export async function POST(request: NextRequest) {
@@ -168,13 +168,13 @@ export async function GET(request: NextRequest) {
     await dbconnect();
     
     const allPlans = await CommunitySubscriptionPlan.find({}).sort({ createdAt: -1 });
-    const activePlans = allPlans.filter(plan => plan.isActive);
-    const invalidPlans = activePlans.filter(plan => 
+    const activePlans = allPlans.filter((plan: ICommunitySubscriptionPlan) => plan.isActive);
+    const invalidPlans = activePlans.filter((plan: ICommunitySubscriptionPlan) => 
       plan.razorpayPlanId.includes('default_') || 
       plan.razorpayPlanId.includes('legacy_') || 
       plan.amount === 0
     );
-    const validPlans = activePlans.filter(plan => 
+    const validPlans = activePlans.filter((plan: ICommunitySubscriptionPlan) => 
       !plan.razorpayPlanId.includes('default_') && 
       !plan.razorpayPlanId.includes('legacy_') && 
       plan.amount > 0

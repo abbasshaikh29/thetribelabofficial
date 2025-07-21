@@ -149,7 +149,7 @@ export async function DELETE(
     }
 
     // Check if any communities are using this plan
-    const communitiesUsingPlan = await Community.find({ subscriptionPlanId: params.id });
+    const communitiesUsingPlan = await (Community as any).find({ subscriptionPlanId: params.id });
     if (communitiesUsingPlan.length > 0) {
       return NextResponse.json(
         { error: "Cannot delete plan that is currently in use by communities" },

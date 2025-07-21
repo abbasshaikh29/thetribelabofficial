@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
 import { Course } from "@/models/Course";
-import { Lesson } from "@/models/Lesson";
+import { Lesson, ILesson } from "@/models/Lesson";
 import { UserProgress } from "@/models/UserProgress";
 import mongoose from "mongoose";
 
@@ -69,12 +69,12 @@ export async function GET(
     );
 
     // Add completion status to each lesson
-    const lessonsWithStatus = lessons.map((lesson) => ({
+    const lessonsWithStatus = lessons.map((lesson: ILesson) => ({
       _id: lesson._id,
       title: lesson.title,
       moduleId: lesson.moduleId,
       order: lesson.order,
-      isCompleted: !!completedLessonsMap[lesson._id.toString()],
+      isCompleted: !!completedLessonsMap[lesson._id?.toString() || ''],
     }));
 
     return NextResponse.json({

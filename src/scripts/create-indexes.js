@@ -1,4 +1,9 @@
 // Script to create MongoDB indexes for better performance
+// Polyfill for Node.js compatibility
+if (typeof globalThis.self === 'undefined') {
+  globalThis.self = globalThis;
+}
+
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";

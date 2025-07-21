@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find community to check if user is a member
-    const community = await Community.findById(event.communityId);
+    const community = await (Community as any).findById(event.communityId);
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },

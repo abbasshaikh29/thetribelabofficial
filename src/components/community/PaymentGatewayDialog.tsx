@@ -27,11 +27,6 @@ interface PaymentGatewayDialogProps {
   onSuccess?: () => void;
 }
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
-  }
-}
 export default function PaymentGatewayDialog({
   isOpen,
   onClose,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { dbconnect } from "@/lib/db";
 import { Community } from "@/models/Community";
-import { CommunitySubscription } from "@/models/Subscription";
+import { CommunitySubscription, ICommunitySubscription } from "@/models/Subscription";
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     await dbconnect();
 
     // Find the community
-    const community = await Community.findOne({ slug });
+    const community = await Community .findOne({ slug });
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     }).sort({ createdAt: -1 });
 
     // Find potentially conflicting subscriptions (active, trial, past_due)
-    const conflictingSubscriptions = allSubscriptions.filter(sub => 
+    const conflictingSubscriptions = allSubscriptions.filter((sub: ICommunitySubscription) =>
       ['active', 'trial', 'past_due', 'authenticated', 'created'].includes(sub.status)
     );
 
@@ -65,9 +65,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Check for expired subscriptions still marked as active
-    const expiredActiveSubscriptions = conflictingSubscriptions.filter(sub => 
-      ['active', 'authenticated'].includes(sub.status) && 
-      sub.currentEnd && 
+    const expiredActiveSubscriptions = conflictingSubscriptions.filter((sub: ICommunitySubscription) =>
+      ['active', 'authenticated'].includes(sub.status) &&
+      sub.currentEnd &&
       new Date(sub.currentEnd) < now
     );
 
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check for subscriptions without valid end dates
-    const invalidDateSubscriptions = conflictingSubscriptions.filter(sub => 
+    const invalidDateSubscriptions = conflictingSubscriptions.filter((sub: ICommunitySubscription) =>
       !sub.currentEnd || isNaN(new Date(sub.currentEnd).getTime())
     );
 
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
 
     // Check for orphaned subscriptions (community subscription ID doesn't match any record)
     if (community.subscriptionId) {
-      const linkedSubscription = allSubscriptions.find(sub => 
+      const linkedSubscription = allSubscriptions.find((sub: ICommunitySubscription) =>
         sub.razorpaySubscriptionId === community.subscriptionId
       );
       
@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       hasConflicts,
-      conflictingSubscriptions: conflictingSubscriptions.map(sub => ({
+      conflictingSubscriptions: conflictingSubscriptions.map((sub: ICommunitySubscription) => ({
         _id: sub._id?.toString(),
         razorpaySubscriptionId: sub.razorpaySubscriptionId,
         status: sub.status,
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
       analysis: {
         expiredActiveCount: expiredActiveSubscriptions.length,
         invalidDateCount: invalidDateSubscriptions.length,
-        hasOrphanedSubscriptionId: community.subscriptionId && !allSubscriptions.find(sub => 
+        hasOrphanedSubscriptionId: community.subscriptionId && !allSubscriptions.find((sub: ICommunitySubscription) =>
           sub.razorpaySubscriptionId === community.subscriptionId
         )
       }

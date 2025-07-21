@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useRef, ReactNode, RefObject } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+"use client";
 
-gsap.registerPlugin(ScrollTrigger);
+import React, { useEffect, useMemo, useRef, ReactNode, RefObject } from "react";
 
 interface ScrollFloatProps {
   children: ReactNode;
@@ -39,43 +37,56 @@ const ScrollFloat: React.FC<ScrollFloatProps> = ({
   }, [children]);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     const el = containerRef.current;
     if (!el) return;
 
-    const scroller =
-      scrollContainerRef && scrollContainerRef.current
-        ? scrollContainerRef.current
-        : window;
+    // Dynamic import of GSAP
+    Promise.all([
+      import('gsap'),
+      import('gsap/ScrollTrigger')
+    ]).then(([{ gsap }, { ScrollTrigger }]) => {
+      gsap.registerPlugin(ScrollTrigger);
+      
+      const scroller =
+        scrollContainerRef && scrollContainerRef.current
+          ? scrollContainerRef.current
+          : window;
 
-    const charElements = el.querySelectorAll(".inline-block");
+      const charElements = el.querySelectorAll(".inline-block");
 
-    gsap.fromTo(
-      charElements,
-      {
-        willChange: "opacity, transform",
-        opacity: 0,
-        yPercent: 120,
-        scaleY: 2.3,
-        scaleX: 0.7,
-        transformOrigin: "50% 0%"
-      },
-      {
-        duration: animationDuration,
-        ease: ease,
-        opacity: 1,
-        yPercent: 0,
-        scaleY: 1,
-        scaleX: 1,
-        stagger: stagger,
-        scrollTrigger: {
-          trigger: el,
-          scroller,
-          start: scrollStart,
-          end: scrollEnd,
-          scrub: true
+      gsap.fromTo(
+        charElements,
+        {
+          willChange: "opacity, transform",
+          opacity: 0,
+          yPercent: 120,
+          scaleY: 2.3,
+          scaleX: 0.7,
+          transformOrigin: "50% 0%"
         },
-      }
-    );
+        {
+          duration: animationDuration,
+          ease: ease,
+          opacity: 1,
+          yPercent: 0,
+          scaleY: 1,
+          scaleX: 1,
+          stagger: stagger,
+          scrollTrigger: {
+            trigger: el,
+            scroller,
+            start: scrollStart,
+            end: scrollEnd,
+            scrub: true
+          },
+        }
+      );
+    }).catch((error) => {
+      console.error('Failed to load GSAP:', error);
+    });
   }, [
     scrollContainerRef,
     animationDuration,

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     await dbconnect();
     
     // Check if plans already exist
-    const existingPlans = await CommunitySubscriptionPlan.find({ isActive: true });
+    const existingPlans = await (CommunitySubscriptionPlan as any).find({ isActive: true });
     
     if (existingPlans.length > 0) {
       return NextResponse.json({
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     await dbconnect();
     
-    const plans = await CommunitySubscriptionPlan.find({ isActive: true })
+    const plans = await (CommunitySubscriptionPlan as any).find({ isActive: true })
       .sort({ amount: 1 });
 
     return NextResponse.json({

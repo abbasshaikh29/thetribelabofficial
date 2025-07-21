@@ -16,7 +16,7 @@ export async function GET(
     await dbconnect();
 
     // Find the community
-    const community = await Community.findOne({ slug });
+    const community = await (Community as any).findOne({ slug });
 
     if (!community) {
       return NextResponse.json(

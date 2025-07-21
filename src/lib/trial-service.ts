@@ -169,7 +169,7 @@ export async function activateTrial(
     trialEndDate.setDate(trialStartDate.getDate() + 14);
 
     // Create trial history record
-    const trialHistory = new TrialHistory({
+    const trialHistory = new (TrialHistory as any)({
       userId,
       communityId: communityId ? communityId : undefined,
       trialType,
@@ -374,7 +374,7 @@ export async function clearTrialState(communityId: string, userId: string) {
     await community.save();
 
     // Update any active trial history records to converted status
-    await TrialHistory.updateMany(
+    await (TrialHistory as any).updateMany(
       {
         userId,
         communityId,

@@ -247,7 +247,7 @@ export class EmailQueue {
         total: 0
       };
 
-      stats.forEach(stat => {
+      stats.forEach((stat: { _id: string; count: number }) => {
         result[stat._id as keyof typeof result] = stat.count;
         result.total += stat.count;
       });

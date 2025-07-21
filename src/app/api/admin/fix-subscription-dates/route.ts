@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     await dbconnect();
 
-    const community = await Community.findById(communityId);
+    const community = await (Community as any).findById(communityId);
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the most recent active subscription
-    const activeSubscription = await CommunitySubscription.findOne({
+    const activeSubscription = await (CommunitySubscription as any).findOne({
       communityId: community._id,
       status: { $in: ["active", "authenticated", "created"] }, // Include 'created' status
     }).sort({ createdAt: -1 });
@@ -87,12 +87,12 @@ export async function POST(request: NextRequest) {
 
     // Apply updates if needed
     if (Object.keys(updateFields).length > 0) {
-      await Community.findByIdAndUpdate(communityId, updateFields);
+      await (Community as any).findByIdAndUpdate(communityId, updateFields);
       subscriptionUpdated = true;
     }
 
     // Re-fetch updated community
-    const updatedCommunity = await Community.findById(communityId);
+    const updatedCommunity = await (Community as any).findById(communityId);
 
     return NextResponse.json({
       success: true,
@@ -151,9 +151,9 @@ export async function GET(request: NextRequest) {
 
     let community;
     if (communityId) {
-      community = await Community.findById(communityId);
+      community = await (Community as any).findById(communityId);
     } else if (slug) {
-      community = await Community.findOne({ slug });
+      community = await  (Community as any).findOne({ slug });
     } else {
       return NextResponse.json(
         { error: "Either communityId or slug is required" },
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get subscription information
-    const activeSubscription = await CommunitySubscription.findOne({
+    const activeSubscription = await (CommunitySubscription as any).findOne({
       communityId: community._id,
       adminId: session.user.id,
       status: { $in: ["active", "authenticated"] },

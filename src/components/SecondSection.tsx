@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Orb from "./Orb";
 import ScrollFloat from "./ScrollFloat";
 import SpotlightCard from "./SpotlightCard";
 

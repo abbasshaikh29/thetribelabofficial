@@ -236,7 +236,7 @@ export async function getLeaderboard(
   const users = await User.aggregate(pipeline);
 
   // Add level information and rank
-  return users.map((user, index) => {
+  return users.map((user: any, index: number) => {
     const levelInfo = calculateLevel(user.points, levels);
     return {
       ...user,

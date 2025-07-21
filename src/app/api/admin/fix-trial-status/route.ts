@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Also check specific community (TODO: Review if this is still needed)
-    const trialTestCommunity = await Community.findOne({ slug: "trial-test" });
+    const trialTestCommunity = await (Community as any).findOne({ slug: "trial-test" });
     console.log("[ADMIN] trial-test community after update:", {
       slug: trialTestCommunity?.slug,
       freeTrialActivated: trialTestCommunity?.freeTrialActivated,

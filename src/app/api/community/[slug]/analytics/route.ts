@@ -6,6 +6,41 @@ import { Post } from "@/models/Posts";
 import { Comment } from "@/models/Comments";
 import { getServerSession } from "@/lib/auth-helpers";
 
+// TypeScript interfaces for aggregation results
+interface MemberJoinData {
+  _id: string;
+  newMembers: number;
+}
+
+interface MemberActivityData {
+  _id: string;
+  activeMembers: number;
+  totalPosts: number;
+}
+
+interface CommentActivityData {
+  _id: string;
+  activeCommenters: number;
+  totalComments: number;
+}
+
+interface RevenueData {
+  _id: string;
+  revenue: number;
+  transactionCount: number;
+}
+
+interface AnalyticsDataItem {
+  period: string;
+  activeMembers: number;
+  newMembers: number;
+  date: string;
+  revenue: number;
+  transactionCount: number;
+  totalPosts: number;
+  totalComments: number;
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
@@ -228,21 +263,21 @@ export async function GET(
 
     // Merge activity data with member join data
     const activityMap = new Map(
-      memberActivityData.map((item) => [item._id, item])
+      memberActivityData.map((item: MemberActivityData) => [item._id, item])
     );
     const commentMap = new Map(
-      commentActivityData.map((item) => [item._id, item])
+      commentActivityData.map((item: CommentActivityData) => [item._id, item])
     );
 
-    const activeMembersData = memberJoinData.map((item) => {
+    const activeMembersData = memberJoinData.map((item: MemberJoinData) => {
       cumulativeNewMembers += item.newMembers;
       const activityInfo = activityMap.get(item._id);
       const commentInfo = commentMap.get(item._id);
 
       // Calculate truly active members (those who posted or commented)
       const realActiveMembers = Math.max(
-        activityInfo?.activeMembers || 0,
-        commentInfo?.activeCommenters || 0
+        (activityInfo as MemberActivityData)?.activeMembers || 0,
+        (commentInfo as CommentActivityData)?.activeCommenters || 0
       );
 
       return {
@@ -253,8 +288,8 @@ export async function GET(
             : Math.max(1, Math.min(totalMembers, 3)), // More realistic fallback: 1-3 active members or total if less
         newMembers: item.newMembers,
         date: item._id,
-        totalPosts: activityInfo?.totalPosts || 0,
-        totalComments: commentInfo?.totalComments || 0,
+        totalPosts: (activityInfo as MemberActivityData)?.totalPosts || 0,
+        totalComments: (commentInfo as CommentActivityData)?.totalComments || 0,
       };
     });
 
@@ -306,7 +341,7 @@ export async function GET(
 
     // Get total revenue for the period (convert from paise to rupees)
     const totalRevenue = revenueData.reduce(
-      (sum, item) => sum + item.revenue / 100,
+      (sum: number, item: RevenueData) => sum + item.revenue / 100,
       0
     );
 
@@ -387,14 +422,14 @@ export async function GET(
       totalMembers > 0 ? (paidMembers / totalMembers) * 100 : 0;
 
     // Merge revenue data with member data
-    const revenueMap = new Map(revenueData.map((item) => [item._id, item]));
+    const revenueMap = new Map(revenueData.map((item: RevenueData) => [item._id, item]));
 
-    const enhancedData = filledData.map((item) => {
+    const enhancedData = filledData.map((item: AnalyticsDataItem) => {
       const revenueInfo = revenueMap.get(item.period);
       return {
         ...item,
-        revenue: revenueInfo ? revenueInfo.revenue / 100 : 0, // Convert paise to rupees
-        transactionCount: revenueInfo?.transactionCount || 0,
+        revenue: revenueInfo ? (revenueInfo as RevenueData).revenue / 100 : 0, // Convert paise to rupees
+        transactionCount: (revenueInfo as RevenueData)?.transactionCount || 0,
         totalPosts: item.totalPosts || 0,
         totalComments: item.totalComments || 0,
       };
@@ -403,7 +438,7 @@ export async function GET(
     // Calculate summary statistics
     const currentActiveMembers = totalMembers; // Total community members
     const totalNewMembers = memberJoinData.reduce(
-      (sum, item) => sum + item.newMembers,
+      (sum: number, item: MemberJoinData) => sum + item.newMembers,
       0
     );
     const averageNewMembers = totalNewMembers / (filledData.length || 1);
@@ -450,14 +485,14 @@ export async function GET(
 
 // Helper function to fill missing periods with zero values
 function fillMissingPeriods(
-  data: any[],
+  data: AnalyticsDataItem[],
   period: string,
   startDate: Date,
   endDate: Date,
   totalMembers: number
-) {
-  const filledData = [];
-  const dataMap = new Map(data.map((item) => [item.period, item]));
+): AnalyticsDataItem[] {
+  const filledData: AnalyticsDataItem[] = [];
+  const dataMap = new Map(data.map((item: AnalyticsDataItem) => [item.period, item]));
 
   const current = new Date(startDate);
 
@@ -482,7 +517,10 @@ function fillMissingPeriods(
     }
 
     if (dataMap.has(periodKey)) {
-      filledData.push(dataMap.get(periodKey));
+      const dataItem = dataMap.get(periodKey);
+      if (dataItem) {
+        filledData.push(dataItem);
+      }
     } else {
       filledData.push({
         period: periodKey,

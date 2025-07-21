@@ -3,7 +3,6 @@ import { Server as HttpServer } from "http";
 
 // Declare the global io property
 declare global {
-  // eslint-disable-next-line no-var
   var io: SocketIOServer | null;
 }
 

@@ -7,11 +7,7 @@ import { Loader2, CreditCard } from "lucide-react";
 import Script from "next/script";
 import type { RazorpayOptions, RazorpayInstance } from "@/types/razorpay";
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
-  }
-}
+
 
 interface CommunityJoinPaymentProps {
   communityId: string;

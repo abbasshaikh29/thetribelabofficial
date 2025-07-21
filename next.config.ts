@@ -1,5 +1,6 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   // Explicitly list file extensions for pages
   pageExtensions: ["js", "jsx", "ts", "tsx"],
   // Specify external packages for server components

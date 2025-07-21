@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
-import { PaymentGateway } from "@/models/PaymentGateway";
+import { PaymentGateway, IPaymentGateway } from "@/models/PaymentGateway";
 import { encrypt, decrypt } from "@/lib/encryption";
 
 /**
@@ -20,7 +20,7 @@ export async function GET() {
     const gateways = await PaymentGateway.find({ ownerId: session.user.id });
 
     // Decrypt sensitive fields before sending
-    const decryptedGateways = gateways.map((g) => {
+    const decryptedGateways = gateways.map((g: IPaymentGateway) => {
       const creds = g.credentials || {};
       const resultCreds: Record<string, any> = { ...creds };
       if (g.name === "razorpay") {
@@ -31,7 +31,7 @@ export async function GET() {
         if (creds.secretKey) resultCreds.secretKey = decrypt(creds.secretKey);
       }
       return {
-        ...g.toObject(),
+        ...(g as any).toObject(),
         credentials: resultCreds,
       };
     });

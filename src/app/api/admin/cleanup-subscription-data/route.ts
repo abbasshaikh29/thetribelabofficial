@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find community by slug
-    const community = await Community.findOne({ slug });
+    const community = await (Community as any).findOne({ slug });
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find community by slug
-    const community = await Community.findOne({ slug });
+    const community = await (Community as any).findOne({ slug });
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbconnect } from "@/lib/db";
-import { Community } from "@/models/Community";
+import { Community, ICommunity } from "@/models/Community";
 import mongoose from "mongoose";
 
 export async function GET(request: NextRequest) {
@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
     }
     
     // Try to find the community by slug
-    const community = await Community.findOne({ slug });
-    
+    const community = await (Community as any).findOne({ slug });
+
     // Get all communities to check if any exist
-    const allCommunities = await Community.find({}).limit(10);
+    const allCommunities = await (Community as any).find({}).limit(10);
     
     // Check database connection
     const dbStatus = {
@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
         members: community.members?.length || 0,
         adminQuestions: community.adminQuestions?.length || 0
       } : null,
-      allCommunities: allCommunities.map(c => ({
-        _id: c._id.toString(),
+      allCommunities: allCommunities.map((c: ICommunity) => ({
+        _id: c._id?.toString() || '',
         name: c.name,
         slug: c.slug
       })),

@@ -1,7 +1,7 @@
 import { getServerSession } from "@/lib/auth-helpers";
 import { User } from "@/models/User";
 import { Post } from "@/models/Posts";
-import { Community } from "@/models/Community";
+import { Community, ICommunity } from "@/models/Community";
 import { dbconnect } from "@/lib/db";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -52,7 +52,7 @@ export async function GET(
     const communities = await Community.find({ members: id });
 
     // Map communities with user's role in each
-    const userCommunities = communities.map((community) => {
+    const userCommunities = communities.map((community: ICommunity) => {
       let role = "member";
       if (community.admin === id) {
         role = "admin";
@@ -84,7 +84,7 @@ export async function GET(
         followingCount: user.following?.length || 0,
       },
       communities: userCommunities,
-      posts: posts.map((post) => ({
+      posts: posts.map((post: any) => ({
         _id: post._id,
         title: post.title,
         content: post.content,

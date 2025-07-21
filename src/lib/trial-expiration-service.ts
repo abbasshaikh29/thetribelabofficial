@@ -1,7 +1,7 @@
 import { dbconnect } from './db';
 import { Community } from '@/models/Community';
 import { User } from '@/models/User';
-import { TrialHistory } from '@/models/TrialHistory';
+import { TrialHistory, ITrialHistory } from '@/models/TrialHistory';
 import { createNotification } from './notifications';
 import { sendTrialExpiredEmail } from './resend';
 

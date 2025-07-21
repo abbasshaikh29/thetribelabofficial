@@ -1,6 +1,6 @@
 import { dbconnect } from './db';
 import { Community } from '@/models/Community';
-import { CommunitySubscription as Subscription } from '@/models/Subscription';
+import { CommunitySubscription as Subscription, ICommunitySubscription } from '@/models/Subscription';
 
 /**
  * Helper function to validate if a date is valid and not Unix epoch
@@ -210,7 +210,7 @@ export async function getDetailedSubscriptionStatus(communityId: string) {
         amount: subscriptionRecord.amount,
         currency: subscriptionRecord.currency
       } : null,
-      allSubscriptions: allSubscriptions.map(sub => ({
+      allSubscriptions: allSubscriptions.map((sub: ICommunitySubscription) => ({
         id: sub.razorpaySubscriptionId,
         status: sub.status,
         currentStart: sub.currentStart,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
-import { Lesson } from "@/models/Lesson";
+import { Lesson, ILesson } from "@/models/Lesson";
 import { Module } from "@/models/Module";
 import { Course } from "@/models/Course";
 import { Community } from "@/models/Community";
@@ -111,7 +111,7 @@ export async function GET(
     }).sort({ order: 1 });
 
     const currentIndex = allLessons.findIndex(
-      (l) => l._id.toString() === lessonId
+      (l: ILesson) => l._id?.toString() === lessonId
     );
 
     const previousLesson =

@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Get total count for pagination
-    const total = await Community.countDocuments({});
+    const total = await (Community as any).countDocuments({});
 
     // Get communities with pagination, sorted by creation date (newest first)
-    const communities = await Community.find({})
+    const communities = await (Community as any).find({})
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

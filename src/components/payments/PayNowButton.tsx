@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { CreditCard, Loader2, Zap } from 'lucide-react';
-import { CommunitySubscriptionCheckout } from '@/components/payments/RazorpayCheckout';
+import React, { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { CreditCard, Loader2, Zap } from "lucide-react";
+import { CommunitySubscriptionCheckout } from "@/components/payments/RazorpayCheckout";
 
 interface PayNowButtonProps {
   communityId?: string;
   communitySlug?: string;
   buttonText?: string;
-  variant?: 'primary' | 'secondary' | 'urgent' | 'minimal';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "urgent" | "minimal";
+  size?: "sm" | "md" | "lg";
   showIcon?: boolean;
   showFeatures?: boolean;
   className?: string;
@@ -19,22 +19,22 @@ interface PayNowButtonProps {
   onError?: (error: string) => void;
   disabled?: boolean;
   // Context for where the button is used
-  context?: 'billing' | 'trial_reminder' | 'suspension' | 'settings';
+  context?: "billing" | "trial_reminder" | "suspension" | "settings";
 }
 
 export default function PayNowButton({
   communityId,
   communitySlug,
   buttonText = "Subscribe Now ($29/month)",
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   showIcon = true,
   showFeatures = false,
   className = "",
   onSuccess,
   onError,
   disabled = false,
-  context = 'billing'
+  context = "billing",
 }: PayNowButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -42,37 +42,56 @@ export default function PayNowButton({
 
   const getVariantStyles = () => {
     switch (variant) {
-      case 'urgent':
+      case "urgent":
         return {
-          button: 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-lg',
-          icon: 'text-white'
+          button: "shadow-lg transition-colors duration-200",
+          icon: "",
+          style: {
+            backgroundColor: "var(--brand-error)",
+            color: "var(--primary-content)",
+            borderColor: "var(--brand-error)",
+          },
         };
-      case 'secondary':
+      case "secondary":
         return {
-          button: 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300',
-          icon: 'text-gray-600'
+          button: "transition-colors duration-200",
+          icon: "",
+          style: {
+            backgroundColor: "var(--bg-secondary)",
+            color: "var(--text-primary)",
+            borderColor: "var(--border-color)",
+          },
         };
-      case 'minimal':
+      case "minimal":
         return {
-          button: 'bg-transparent hover:bg-gray-50 text-halloween-orange border-halloween-orange',
-          icon: 'text-halloween-orange'
+          button: "bg-transparent transition-colors duration-200",
+          icon: "",
+          style: {
+            color: "var(--brand-primary)",
+            borderColor: "var(--brand-primary)",
+          },
         };
       default: // primary
         return {
-          button: 'bg-halloween-orange hover:bg-orange-600 text-white border-halloween-orange',
-          icon: 'text-white'
+          button: "transition-colors duration-200",
+          icon: "",
+          style: {
+            backgroundColor: "var(--brand-primary)",
+            color: "var(--primary-content)",
+            borderColor: "var(--brand-primary)",
+          },
         };
     }
   };
 
   const getSizeStyles = () => {
     switch (size) {
-      case 'sm':
-        return 'px-3 py-1.5 text-sm';
-      case 'lg':
-        return 'px-8 py-4 text-lg';
+      case "sm":
+        return "px-3 py-1.5 text-sm";
+      case "lg":
+        return "px-8 py-4 text-lg";
       default: // md
-        return 'px-6 py-3 text-base';
+        return "px-6 py-3 text-base";
     }
   };
 
@@ -82,12 +101,16 @@ export default function PayNowButton({
   const handleSuccess = (subscription: any) => {
     setIsProcessing(false);
     onSuccess?.(subscription);
-    
+
     // Redirect to community with success message
     if (communitySlug) {
-      router.push(`/Newcompage/${communitySlug}?subscription=activated&trial=converted`);
+      router.push(
+        `/Newcompage/${communitySlug}?subscription=activated&trial=converted`
+      );
     } else if (communityId) {
-      router.push(`/Newcompage/${communityId}?subscription=activated&trial=converted`);
+      router.push(
+        `/Newcompage/${communityId}?subscription=activated&trial=converted`
+      );
     }
   };
 
@@ -103,8 +126,10 @@ export default function PayNowButton({
   if (!session?.user) {
     return (
       <button
-        onClick={() => router.push('/auth/signin')}
+        type="button"
+        onClick={() => router.push("/auth/signin")}
         className={`${styles.button} ${sizeStyles} border rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 ${className}`}
+        style={styles.style}
         disabled={disabled}
       >
         {showIcon && <CreditCard className={`w-4 h-4 ${styles.icon}`} />}
@@ -123,15 +148,22 @@ export default function PayNowButton({
         onError={handleError}
         onStart={handleProcessingStart}
         className={`${styles.button} ${sizeStyles} border rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 w-full ${
-          disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+          disabled || isProcessing ? "opacity-50 cursor-not-allowed" : ""
         }`}
         disabled={disabled || isProcessing}
-        customButton={({ isLoading: _isLoading, isScriptLoaded: _isScriptLoaded, buttonText: _btnText, ...buttonProps }) => (
+        customButton={({
+          isLoading: _isLoading,
+          isScriptLoaded: _isScriptLoaded,
+          buttonText: _btnText,
+          ...buttonProps
+        }) => (
           <button
             {...buttonProps}
+            type="button"
             className={`${styles.button} ${sizeStyles} border rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 w-full ${
-              disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+              disabled || isProcessing ? "opacity-50 cursor-not-allowed" : ""
             }`}
+            style={styles.style}
             disabled={disabled || isProcessing}
           >
             {isProcessing ? (
@@ -141,20 +173,24 @@ export default function PayNowButton({
               </>
             ) : (
               <>
-                {showIcon && (
-                  variant === 'urgent' ? 
-                    <Zap className={`w-4 h-4 ${styles.icon}`} /> :
+                {showIcon &&
+                  (variant === "urgent" ? (
+                    <Zap className={`w-4 h-4 ${styles.icon}`} />
+                  ) : (
                     <CreditCard className={`w-4 h-4 ${styles.icon}`} />
-                )}
+                  ))}
                 <span>{_btnText}</span>
               </>
             )}
           </button>
         )}
       />
-      
+
       {showFeatures && (
-        <div className="mt-3 text-xs text-gray-600 space-y-1">
+        <div
+          className="mt-3 text-xs space-y-1"
+          style={{ color: "var(--text-secondary)" }}
+        >
           <div className="flex items-center justify-center space-x-4">
             <span>✓ Unlimited features</span>
             <span>✓ Cancel anytime</span>
@@ -167,20 +203,29 @@ export default function PayNowButton({
       )}
 
       {/* Context-specific messaging */}
-      {context === 'trial_reminder' && (
-        <p className="mt-2 text-xs text-orange-600 text-center font-medium">
+      {context === "trial_reminder" && (
+        <p
+          className="mt-2 text-xs text-center font-medium"
+          style={{ color: "var(--brand-warning)" }}
+        >
           Subscribe now to avoid community suspension
         </p>
       )}
 
-      {context === 'suspension' && (
-        <p className="mt-2 text-xs text-red-600 text-center font-medium">
+      {context === "suspension" && (
+        <p
+          className="mt-2 text-xs text-center font-medium"
+          style={{ color: "var(--brand-error)" }}
+        >
           Your community is currently suspended - Subscribe to reactivate
         </p>
       )}
 
-      {context === 'settings' && (
-        <p className="mt-2 text-xs text-gray-500 text-center">
+      {context === "settings" && (
+        <p
+          className="mt-2 text-xs text-center"
+          style={{ color: "var(--text-secondary)" }}
+        >
           Upgrade to unlock all premium features
         </p>
       )}
@@ -189,7 +234,7 @@ export default function PayNowButton({
 }
 
 // Specialized variants for common use cases
-export function UrgentPayNowButton(props: Omit<PayNowButtonProps, 'variant'>) {
+export function UrgentPayNowButton(props: Omit<PayNowButtonProps, "variant">) {
   return (
     <PayNowButton
       {...props}
@@ -199,7 +244,9 @@ export function UrgentPayNowButton(props: Omit<PayNowButtonProps, 'variant'>) {
   );
 }
 
-export function MinimalPayNowButton(props: Omit<PayNowButtonProps, 'variant' | 'showIcon'>) {
+export function MinimalPayNowButton(
+  props: Omit<PayNowButtonProps, "variant" | "showIcon">
+) {
   return (
     <PayNowButton
       {...props}
@@ -210,7 +257,9 @@ export function MinimalPayNowButton(props: Omit<PayNowButtonProps, 'variant' | '
   );
 }
 
-export function LargePayNowButton(props: Omit<PayNowButtonProps, 'size' | 'showFeatures'>) {
+export function LargePayNowButton(
+  props: Omit<PayNowButtonProps, "size" | "showFeatures">
+) {
   return (
     <PayNowButton
       {...props}
@@ -242,10 +291,10 @@ export function TrialConversionButton({
     return "Convert to Paid Subscription";
   };
 
-  const getVariant = (): PayNowButtonProps['variant'] => {
-    if (daysRemaining === null || daysRemaining === undefined) return 'primary';
-    if (daysRemaining <= 2) return 'urgent';
-    return 'primary';
+  const getVariant = (): PayNowButtonProps["variant"] => {
+    if (daysRemaining === null || daysRemaining === undefined) return "primary";
+    if (daysRemaining <= 2) return "urgent";
+    return "primary";
   };
 
   return (

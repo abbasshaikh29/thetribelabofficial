@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbconnect } from "@/lib/db";
-import { Community } from "@/models/Community";
+import { Community, ICommunity } from "@/models/Community";
 import { getServerSession } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const communities = await Community.find({ members: session.user.id });
 
     // Map communities with user's role in each
-    const userCommunities = communities.map((community) => {
+    const userCommunities = communities.map((community: ICommunity) => {
       let role = "member";
       if (community.admin === session.user.id) {
         role = "admin";

@@ -76,10 +76,13 @@ export default function HomeIdPage() {
 
   // Check for payment success and show notification
   useEffect(() => {
-    const subscriptionStatus = searchParams.get('subscription');
+    const subscriptionStatus = searchParams.get("subscription");
 
-    if (subscriptionStatus === 'success') {
-      showNotification('🎉 Payment successful! Your subscription is now active.', 'success');
+    if (subscriptionStatus === "success") {
+      showNotification(
+        "🎉 Payment successful! Your subscription is now active.",
+        "success"
+      );
 
       // Clean up the URL parameter after showing notification
       const newUrl = window.location.pathname;
@@ -91,8 +94,11 @@ export default function HomeIdPage() {
           window.location.reload();
         }, 1500); // Give time for notification to be seen
       }
-    } else if (subscriptionStatus === 'activated') {
-      showNotification('✅ Free trial activated! Enjoy unlimited access to all features.', 'success');
+    } else if (subscriptionStatus === "activated") {
+      showNotification(
+        "✅ Free trial activated! Enjoy unlimited access to all features.",
+        "success"
+      );
 
       // Clean up the URL parameter
       const newUrl = window.location.pathname;
@@ -105,7 +111,6 @@ export default function HomeIdPage() {
     if (!slug || !isMember) return;
 
     try {
-
       const postsResponse = await fetch(
         `/api/community/posts?communitySlug=${slug}`
       );
@@ -120,7 +125,6 @@ export default function HomeIdPage() {
 
       const postsData = await postsResponse.json();
 
-
       // Ensure each post has a properly formatted likes array
       const processedPosts = postsData.map((post: any) => ({
         ...post,
@@ -129,9 +133,7 @@ export default function HomeIdPage() {
       }));
 
       // Log likes for debugging
-      processedPosts.forEach((post: any) => {
-
-      });
+      processedPosts.forEach((post: any) => {});
 
       // Posts are already sorted by the API (newest first)
       setPosts(processedPosts);
@@ -193,11 +195,13 @@ export default function HomeIdPage() {
   useEffect(() => {
     if (!community || !session?.user?.id) return;
 
-    const membershipStatus = community.members?.includes(session.user.id) || false;
+    const membershipStatus =
+      community.members?.includes(session.user.id) || false;
     setIsMember(membershipStatus);
 
     const adminStatus = community.admin === session.user.id;
-    const subAdminStatus = community.subAdmins?.includes(session.user.id) || false;
+    const subAdminStatus =
+      community.subAdmins?.includes(session.user.id) || false;
     setIsAdmin(adminStatus);
     setIsSubAdmin(subAdminStatus);
   }, [community, session]);
@@ -214,8 +218,6 @@ export default function HomeIdPage() {
     if (!isEnabled || !community || !isMember) {
       return;
     }
-
-
 
     // Listen for new posts
     const newPostCleanup = listenForRealtimeEvents(
@@ -499,230 +501,245 @@ export default function HomeIdPage() {
       <div style={{ backgroundColor: "var(--bg-primary)" }}>
         <CommunityNav />
         {isMember ? (
-          <div className="container mt-6 mx-auto px-4 py-8">
-            <div className="flex flex-col lg:flex-row justify-between gap-4">
-              {/* Main content - Posts */}
-              <div className="flex flex-col mt-6 w-full lg:w-2/3 gap-3">
-                <div className="mb-4">
-                  <Suspense
-                    fallback={<div className="skeleton h-12 w-full"></div>}
-                  >
-                    <Searchs onSearch={handleSearch} />
-                  </Suspense>
-                </div>
-                <div>
-                  <Suspense
-                    fallback={<div className="skeleton h-32 w-full"></div>}
-                  >
-                    <CreatePost
-                      communitySlug={slug}
-                      authorId={session?.user?.id as string}
-                      isAdmin={isAdmin}
-                      onPostCreated={(newPost) => {
-                        console.log("New post created:", newPost);
+          <div className="w-full flex justify-center items-center">
+            <div className="w-full md:w-2/3 px-4 py-8">
+              <div className="flex flex-col lg:flex-row justify-between gap-4">
+                {/* Main content - Posts */}
+                <div className="flex flex-col mt-6 w-full lg:w-2/3 gap-3">
+                  <div className="mb-4">
+                    <Suspense
+                      fallback={<div className="skeleton h-12 w-full"></div>}
+                    >
+                      <Searchs onSearch={handleSearch} />
+                    </Suspense>
+                  </div>
+                  <div>
+                    <Suspense
+                      fallback={<div className="skeleton h-32 w-full"></div>}
+                    >
+                      <CreatePost
+                        communitySlug={slug}
+                        authorId={session?.user?.id as string}
+                        isAdmin={isAdmin}
+                        onPostCreated={(newPost) => {
+                          console.log("New post created:", newPost);
 
-                        // Ensure the new post has all required fields and proper formatting
-                        const formattedPost = {
-                          ...newPost,
-                          _id: newPost._id.toString(),
-                          createdAt:
-                            typeof newPost.createdAt === "string"
-                              ? newPost.createdAt
-                              : new Date().toISOString(),
-                          likes: Array.isArray(newPost.likes)
-                            ? newPost.likes
-                            : [],
-                          authorName:
-                            newPost.authorName ||
-                            session?.user?.name ||
-                            "Unknown",
-                          profileImage:
-                            newPost.profileImage || session?.user?.image,
-                          createdBy:
-                            typeof newPost.createdBy === "object" &&
-                            newPost.createdBy !== null
-                              ? newPost.createdBy._id?.toString() ||
-                                newPost.createdBy.toString()
-                              : newPost.createdBy || session?.user?.id,
-                        };
+                          // Ensure the new post has all required fields and proper formatting
+                          const formattedPost = {
+                            ...newPost,
+                            _id: newPost._id.toString(),
+                            createdAt:
+                              typeof newPost.createdAt === "string"
+                                ? newPost.createdAt
+                                : new Date().toISOString(),
+                            likes: Array.isArray(newPost.likes)
+                              ? newPost.likes
+                              : [],
+                            authorName:
+                              newPost.authorName ||
+                              session?.user?.name ||
+                              "Unknown",
+                            profileImage:
+                              newPost.profileImage || session?.user?.image,
+                            createdBy:
+                              typeof newPost.createdBy === "object" &&
+                              newPost.createdBy !== null
+                                ? newPost.createdBy._id?.toString() ||
+                                  newPost.createdBy.toString()
+                                : newPost.createdBy || session?.user?.id,
+                          };
 
-                        // Add the new post to the beginning of the posts array
-                        setPosts((prevPosts) => [formattedPost, ...prevPosts]);
-
-                        // Also update filtered posts if we're not searching
-                        if (!searchQuery) {
-                          setFilteredPosts((prevPosts) => [
+                          // Add the new post to the beginning of the posts array
+                          setPosts((prevPosts) => [
                             formattedPost,
                             ...prevPosts,
                           ]);
-                        }
-                      }}
+
+                          // Also update filtered posts if we're not searching
+                          if (!searchQuery) {
+                            setFilteredPosts((prevPosts) => [
+                              formattedPost,
+                              ...prevPosts,
+                            ]);
+                          }
+                        }}
+                      />
+                    </Suspense>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 community-feed">
+                    {filteredPosts.length === 0 && searchQuery ? (
+                      <div className="text-center p-4 bg-base-200 rounded-lg">
+                        <p className="text-lg">
+                          No posts found matching "{searchQuery}"
+                        </p>
+                      </div>
+                    ) : (
+                      filteredPosts.map((post) => {
+                        const postData = {
+                          ...post,
+                          _id: post._id.toString(),
+                          createdAt:
+                            typeof post.createdAt === "string"
+                              ? post.createdAt
+                              : post.createdAt.toISOString(),
+                          likes: Array.isArray(post.likes) ? post.likes : [],
+                          authorName: post.authorName,
+                          profileImage: post.profileImage,
+                          // Convert createdBy to string if it's an object
+                          createdBy:
+                            typeof post.createdBy === "object" &&
+                            post.createdBy !== null
+                              ? post.createdBy._id?.toString() ||
+                                post.createdBy.toString()
+                              : post.createdBy,
+                        };
+                        return (
+                          <Suspense
+                            key={post._id}
+                            fallback={
+                              <div className="skeleton h-48 w-full"></div>
+                            }
+                          >
+                            <PostCard
+                              key={post._id}
+                              post={postData}
+                              onLike={(liked) => {
+                                // The Post component will handle the API call
+                                // We'll just update the UI state here
+                                setPosts((prev) => {
+                                  return prev.map((p) => {
+                                    if (p._id === post._id) {
+                                      // Make sure likes is always an array
+                                      const currentLikes = Array.isArray(
+                                        p.likes
+                                      )
+                                        ? [...p.likes]
+                                        : [];
+
+                                      if (liked) {
+                                        // Check if user already liked the post to avoid duplicates
+                                        const alreadyLiked = currentLikes.some(
+                                          (id) =>
+                                            id.toString() === session?.user?.id
+                                        );
+
+                                        if (
+                                          !alreadyLiked &&
+                                          session?.user?.id
+                                        ) {
+                                          // Add the user's ID to likes
+                                          return {
+                                            ...p,
+                                            likes: [
+                                              ...currentLikes,
+                                              new mongoose.Types.ObjectId(
+                                                session.user.id
+                                              ),
+                                            ],
+                                          };
+                                        } else {
+                                          // User already liked the post, return unchanged
+                                          return p;
+                                        }
+                                      } else {
+                                        // Remove the user's ID from likes
+                                        return {
+                                          ...p,
+                                          likes: currentLikes.filter(
+                                            (id) =>
+                                              id.toString() !==
+                                              session?.user?.id
+                                          ),
+                                        };
+                                      }
+                                    }
+                                    return p;
+                                  });
+                                });
+                              }}
+                              onEdit={(postId) => handleEditPost(postId)}
+                              onDelete={(postId) => handleDeletePost(postId)}
+                              onPin={(postId, isPinned) =>
+                                handlePinPost(postId, isPinned)
+                              }
+                              isAdmin={isAdmin || isSubAdmin}
+                            />
+                          </Suspense>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* About card - Hidden on mobile, visible on large screens */}
+                <div className="hidden lg:block lg:w-1/3 mt-6 space-y-4">
+                  <Suspense
+                    fallback={<div className="skeleton h-96 w-full"></div>}
+                  >
+                    <CommunityAboutcard slug={slug} />
+                  </Suspense>
+
+                  {/* Compact Leaderboard */}
+                  <Suspense
+                    fallback={<div className="skeleton h-64 w-full"></div>}
+                  >
+                    <CompactLeaderboard
+                      communityId={community?._id?.toString() || ""}
+                      communitySlug={slug}
+                      period="30day"
+                      limit={5}
                     />
                   </Suspense>
                 </div>
-                <div className="grid grid-cols-1 gap-4 community-feed">
-                  {filteredPosts.length === 0 && searchQuery ? (
-                    <div className="text-center p-4 bg-base-200 rounded-lg">
-                      <p className="text-lg">
-                        No posts found matching "{searchQuery}"
-                      </p>
+
+                {/* Mobile-only about button that opens a modal */}
+                <div className="lg:hidden w-full mt-4 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const modal = document.getElementById(
+                        "community-about-modal"
+                      ) as HTMLDialogElement;
+                      if (modal) modal.showModal();
+                    }}
+                    className="btn btn-outline w-full"
+                  >
+                    About This Community
+                  </button>
+
+                  <dialog
+                    id="community-about-modal"
+                    className="modal modal-bottom sm:modal-middle"
+                  >
+                    <div className="modal-box">
+                      <Suspense
+                        fallback={<div className="skeleton h-96 w-full"></div>}
+                      >
+                        <CommunityAboutcard slug={slug} />
+                      </Suspense>
+                      <div className="modal-action">
+                        <form method="dialog">
+                          <button type="submit" className="btn">
+                            Close
+                          </button>
+                        </form>
+                      </div>
                     </div>
-                  ) : (
-                    filteredPosts.map((post) => {
-                      const postData = {
-                        ...post,
-                        _id: post._id.toString(),
-                        createdAt:
-                          typeof post.createdAt === "string"
-                            ? post.createdAt
-                            : post.createdAt.toISOString(),
-                        likes: Array.isArray(post.likes) ? post.likes : [],
-                        authorName: post.authorName,
-                        profileImage: post.profileImage,
-                        // Convert createdBy to string if it's an object
-                        createdBy:
-                          typeof post.createdBy === "object" &&
-                          post.createdBy !== null
-                            ? post.createdBy._id?.toString() ||
-                              post.createdBy.toString()
-                            : post.createdBy,
-                      };
-                      return (
-                        <Suspense
-                          key={post._id}
-                          fallback={
-                            <div className="skeleton h-48 w-full"></div>
-                          }
-                        >
-                          <PostCard
-                            key={post._id}
-                            post={postData}
-                            onLike={(liked) => {
-                              // The Post component will handle the API call
-                              // We'll just update the UI state here
-                              setPosts((prev) => {
-                                return prev.map((p) => {
-                                  if (p._id === post._id) {
-                                    // Make sure likes is always an array
-                                    const currentLikes = Array.isArray(p.likes)
-                                      ? [...p.likes]
-                                      : [];
-
-                                    if (liked) {
-                                      // Check if user already liked the post to avoid duplicates
-                                      const alreadyLiked = currentLikes.some(
-                                        (id) =>
-                                          id.toString() === session?.user?.id
-                                      );
-
-                                      if (!alreadyLiked && session?.user?.id) {
-                                        // Add the user's ID to likes
-                                        return {
-                                          ...p,
-                                          likes: [
-                                            ...currentLikes,
-                                            new mongoose.Types.ObjectId(
-                                              session.user.id
-                                            ),
-                                          ],
-                                        };
-                                      } else {
-                                        // User already liked the post, return unchanged
-                                        return p;
-                                      }
-                                    } else {
-                                      // Remove the user's ID from likes
-                                      return {
-                                        ...p,
-                                        likes: currentLikes.filter(
-                                          (id) =>
-                                            id.toString() !== session?.user?.id
-                                        ),
-                                      };
-                                    }
-                                  }
-                                  return p;
-                                });
-                              });
-                            }}
-                            onEdit={(postId) => handleEditPost(postId)}
-                            onDelete={(postId) => handleDeletePost(postId)}
-                            onPin={(postId, isPinned) =>
-                              handlePinPost(postId, isPinned)
-                            }
-                            isAdmin={isAdmin || isSubAdmin}
-                          />
-                        </Suspense>
-                      );
-                    })
-                  )}
+                  </dialog>
                 </div>
-              </div>
-
-              {/* About card - Hidden on mobile, visible on large screens */}
-              <div className="hidden lg:block lg:w-1/3 mt-6 space-y-4">
-                <Suspense
-                  fallback={<div className="skeleton h-96 w-full"></div>}
-                >
-                  <CommunityAboutcard slug={slug} />
-                </Suspense>
-
-                {/* Compact Leaderboard */}
-                <Suspense
-                  fallback={<div className="skeleton h-64 w-full"></div>}
-                >
-                  <CompactLeaderboard
-                    communityId={community?._id?.toString() || ""}
-                    communitySlug={slug}
-                    period="30day"
-                    limit={5}
-                  />
-                </Suspense>
-              </div>
-
-              {/* Mobile-only about button that opens a modal */}
-              <div className="lg:hidden w-full mt-4 mb-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const modal = document.getElementById(
-                      "community-about-modal"
-                    ) as HTMLDialogElement;
-                    if (modal) modal.showModal();
-                  }}
-                  className="btn btn-outline w-full"
-                >
-                  About This Community
-                </button>
-
-                <dialog
-                  id="community-about-modal"
-                  className="modal modal-bottom sm:modal-middle"
-                >
-                  <div className="modal-box">
-                    <Suspense
-                      fallback={<div className="skeleton h-96 w-full"></div>}
-                    >
-                      <CommunityAboutcard slug={slug} />
-                    </Suspense>
-                    <div className="modal-action">
-                      <form method="dialog">
-                        <button type="submit" className="btn">
-                          Close
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </dialog>
               </div>
             </div>
           </div>
         ) : (
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col gap-4">
-              <Suspense fallback={<div className="skeleton h-96 w-full"></div>}>
-                <About slug={slug} />
-              </Suspense>
+          <div className="w-full flex justify-center items-center">
+            <div className="w-full md:w-2/3 px-4 py-8">
+              <div className="flex flex-col gap-4">
+                <Suspense
+                  fallback={<div className="skeleton h-96 w-full"></div>}
+                >
+                  <About slug={slug} />
+                </Suspense>
+              </div>
             </div>
           </div>
         )}

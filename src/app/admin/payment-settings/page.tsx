@@ -197,6 +197,9 @@ export default function PaymentSettingsPage() {
             <div>
               <label className="block font-medium mb-1">Provider</label>
               <input
+                name="name"
+                title="Provider"
+                aria-label="Provider"
                 type="text"
                 value={form.name}
                 disabled
@@ -217,6 +220,9 @@ export default function PaymentSettingsPage() {
             <div>
               <label className="block font-medium mb-1">Credentials (JSON)</label>
               <textarea
+                name="credentials"
+                title="Credentials"
+                aria-label="Credentials"
                 value={form.credentials}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, credentials: e.target.value }))

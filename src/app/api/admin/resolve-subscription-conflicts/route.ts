@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { dbconnect } from "@/lib/db";
 import { Community } from "@/models/Community";
-import { CommunitySubscription } from "@/models/Subscription";
+import { CommunitySubscription, ICommunitySubscription } from "@/models/Subscription";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     await dbconnect();
 
     // Find the community
-    const community = await Community.findOne({ slug });
+    const community = await (Community ).findOne({ slug });
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Find all subscription records for this community and admin
-    const allSubscriptions = await CommunitySubscription.find({
+    const allSubscriptions = await (CommunitySubscription).find({
       $or: [
         { communityId: community._id },
         { adminId: session.user.id }
@@ -71,15 +71,15 @@ export async function POST(req: NextRequest) {
       // Smart cleanup - remove only problematic subscriptions
       
       // 1. Remove expired subscriptions that are still marked as active
-      const expiredActiveSubscriptions = allSubscriptions.filter(sub => 
-        ['active', 'authenticated', 'created'].includes(sub.status) && 
-        sub.currentEnd && 
+      const expiredActiveSubscriptions = allSubscriptions.filter((sub: ICommunitySubscription) =>
+        ['active', 'authenticated', 'created'].includes(sub.status) &&
+        sub.currentEnd &&
         new Date(sub.currentEnd) < now
       );
 
       for (const sub of expiredActiveSubscriptions) {
         try {
-          await CommunitySubscription.findByIdAndUpdate(sub._id, {
+          await (CommunitySubscription ).findByIdAndUpdate(sub._id, {
             status: 'expired'
           });
           results.details.push(`Marked subscription ${sub.razorpaySubscriptionId} as expired`);
@@ -89,13 +89,13 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Remove subscriptions with invalid dates
-      const invalidDateSubscriptions = allSubscriptions.filter(sub => 
+      const invalidDateSubscriptions = allSubscriptions.filter((sub: ICommunitySubscription) =>
         !sub.currentEnd || isNaN(new Date(sub.currentEnd).getTime())
       );
 
       for (const sub of invalidDateSubscriptions) {
         try {
-          await CommunitySubscription.findByIdAndDelete(sub._id);
+          await (CommunitySubscription as any).findByIdAndDelete(sub._id);
           results.removedSubscriptions++;
           results.details.push(`Removed subscription with invalid dates: ${sub.razorpaySubscriptionId}`);
         } catch (error: any) {
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
 
       // 3. Clean up community subscription reference if it points to non-existent or inactive subscription
       if (community.subscriptionId) {
-        const linkedSubscription = allSubscriptions.find(sub => 
+        const linkedSubscription = allSubscriptions.find((sub: ICommunitySubscription) =>
           sub.razorpaySubscriptionId === community.subscriptionId
         );
         
@@ -116,9 +116,9 @@ export async function POST(req: NextRequest) {
       }
 
       // 4. Reset payment status if no valid active subscriptions exist
-      const validActiveSubscriptions = allSubscriptions.filter(sub => 
-        ['active', 'authenticated'].includes(sub.status) && 
-        sub.currentEnd && 
+      const validActiveSubscriptions = allSubscriptions.filter((sub: ICommunitySubscription) =>
+        ['active', 'authenticated'].includes(sub.status) &&
+        sub.currentEnd &&
         new Date(sub.currentEnd) > now
       );
 
@@ -130,13 +130,13 @@ export async function POST(req: NextRequest) {
     } else if (action === 'force-reset') {
       // Force reset - remove all conflicting subscriptions
       
-      const conflictingSubscriptions = allSubscriptions.filter(sub => 
+      const conflictingSubscriptions = allSubscriptions.filter((sub: ICommunitySubscription) =>
         ['active', 'trial', 'past_due', 'authenticated', 'created'].includes(sub.status)
       );
 
       for (const sub of conflictingSubscriptions) {
         try {
-          await CommunitySubscription.findByIdAndDelete(sub._id);
+          await (CommunitySubscription as any).findByIdAndDelete(sub._id);
           results.removedSubscriptions++;
           results.details.push(`Force removed subscription: ${sub.razorpaySubscriptionId}`);
         } catch (error: any) {

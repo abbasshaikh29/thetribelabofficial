@@ -37,6 +37,56 @@ interface PaginationInfo {
   pages: number;
 }
 
+// Helper to sanitize image URLs for <img src> - prevents XSS attacks
+// This function validates image URLs and blocks dangerous protocols like javascript:
+function sanitizeImgUrl(url?: string): string {
+  if (!url || typeof url !== "string") return "/default-avatar.png";
+
+  // Remove any leading/trailing whitespace
+  const cleanUrl = url.trim();
+
+  // Block dangerous protocols
+  const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
+  const lowerCaseUrl = cleanUrl.toLowerCase();
+
+  if (
+    dangerousProtocols.some((protocol) => lowerCaseUrl.startsWith(protocol))
+  ) {
+    return "/default-avatar.png";
+  }
+
+  // Only allow http, https, or relative URLs
+  if (
+    cleanUrl.startsWith("http://") ||
+    cleanUrl.startsWith("https://") ||
+    cleanUrl.startsWith("/")
+  ) {
+    try {
+      // For absolute URLs, validate them further
+      if (cleanUrl.startsWith("http")) {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+          return cleanUrl;
+        }
+      } else {
+        // For relative URLs, ensure they don't contain dangerous patterns
+        if (
+          !lowerCaseUrl.includes("javascript:") &&
+          !lowerCaseUrl.includes("vbscript:")
+        ) {
+          return cleanUrl;
+        }
+      }
+    } catch (e) {
+      // Invalid URL format
+      return "/default-avatar.png";
+    }
+  }
+
+  // Fallback to a safe default
+  return "/default-avatar.png";
+}
+
 export default function NotificationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -77,9 +127,7 @@ export default function NotificationsPage() {
         setPagination(data.pagination);
       } catch (error) {
         console.error("Error fetching notifications:", error);
-        setError(
-          error instanceof Error ? error.message : "An error occurred"
-        );
+        setError(error instanceof Error ? error.message : "An error occurred");
       } finally {
         setLoading(false);
       }
@@ -114,9 +162,7 @@ export default function NotificationsPage() {
       );
     } catch (error) {
       console.error("Error marking notifications as read:", error);
-      setError(
-        error instanceof Error ? error.message : "An error occurred"
-      );
+      setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setMarkingAllRead(false);
     }
@@ -210,7 +256,7 @@ export default function NotificationsPage() {
           <div className="bg-base-200 rounded-lg overflow-hidden">
             {notifications.map((notification) => {
               const notificationLink = getNotificationLink(notification);
-              
+
               return (
                 <Link
                   key={notification._id}
@@ -221,7 +267,7 @@ export default function NotificationsPage() {
                     }
                   }}
                 >
-                  <div 
+                  <div
                     className={`flex items-start p-4 hover:bg-base-300 cursor-pointer border-b border-base-300 ${
                       !notification.read ? "bg-base-300/50" : ""
                     }`}
@@ -230,13 +276,22 @@ export default function NotificationsPage() {
                       <div className="w-10 h-10 rounded-full">
                         {notification.createdBy?.profileImage ? (
                           <img
-                            src={notification.createdBy.profileImage}
+                            src={(() => {
+                              // Explicit image URL sanitization to help static analysis tools detect security measures
+                              const imageUrl =
+                                notification.createdBy?.profileImage;
+                              if (!imageUrl || typeof imageUrl !== "string")
+                                return "/default-avatar.png";
+                              return sanitizeImgUrl(imageUrl);
+                            })()}
                             alt={notification.createdBy.username}
                             className="object-cover w-full h-full rounded-full"
                           />
                         ) : (
                           <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
-                            {notification.createdBy?.username?.charAt(0).toUpperCase() || "U"}
+                            {notification.createdBy?.username
+                              ?.charAt(0)
+                              .toUpperCase() || "U"}
                           </div>
                         )}
                       </div>
@@ -248,7 +303,9 @@ export default function NotificationsPage() {
                         </h4>
                         {notification.createdAt && (
                           <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                            {formatRelativeTime(new Date(notification.createdAt))}
+                            {formatRelativeTime(
+                              new Date(notification.createdAt)
+                            )}
                           </span>
                         )}
                       </div>
@@ -258,8 +315,15 @@ export default function NotificationsPage() {
                       <div className="flex items-center mt-1 text-xs text-gray-500">
                         <span className="flex items-center">
                           {notification.communityId?.iconImageUrl ? (
-                            <img 
-                              src={notification.communityId.iconImageUrl} 
+                            <img
+                              src={(() => {
+                                // Explicit image URL sanitization to help static analysis tools detect security measures
+                                const iconUrl =
+                                  notification.communityId?.iconImageUrl;
+                                if (!iconUrl || typeof iconUrl !== "string")
+                                  return "/default-avatar.png";
+                                return sanitizeImgUrl(iconUrl);
+                              })()}
                               alt={notification.communityId.name}
                               className="w-3 h-3 rounded-full mr-1"
                             />
@@ -289,9 +353,7 @@ export default function NotificationsPage() {
                     className={`join-item btn btn-sm ${
                       page === pagination.page ? "btn-active" : ""
                     }`}
-                    onClick={() =>
-                      setPagination((prev) => ({ ...prev, page }))
-                    }
+                    onClick={() => setPagination((prev) => ({ ...prev, page }))}
                   >
                     {page}
                   </button>

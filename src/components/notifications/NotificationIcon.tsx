@@ -23,14 +23,14 @@ export default function NotificationIcon() {
     try {
       // Add timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
       const response = await fetch(
         "/api/notifications?unread=true", // Use new endpoint
         {
           signal: controller.signal,
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }
       );
@@ -44,7 +44,7 @@ export default function NotificationIcon() {
         console.warn("Failed to fetch notifications:", response.status);
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         console.warn("Notification fetch request timed out");
       } else {
         console.error("Error fetching unread notifications count:", error);
@@ -59,14 +59,21 @@ export default function NotificationIcon() {
     // Initial fetch
     fetchUnreadCount();
 
-    // Set up interval to check for new notifications
+    // Set up interval to check for new notifications with better error handling
     const intervalId = setInterval(() => {
       try {
-        fetchUnreadCount();
+        // Add a timeout for the interval fetch as well
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Interval fetch timeout")), 3000);
+        });
+
+        Promise.race([fetchUnreadCount(), timeoutPromise]).catch((error) => {
+          console.warn("Notification interval fetch failed:", error);
+        });
       } catch (error) {
         console.error("Error in notification interval:", error);
       }
-    }, 60000); // Check every 60 seconds (reduced from 30 seconds since we have real-time updates)
+    }, 90000); // Check every 90 seconds (increased to reduce server load)
 
     return () => {
       clearInterval(intervalId);

@@ -85,25 +85,26 @@ export default function PostCard({
   const [chatUserId, setChatUserId] = useState<string | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const handleChatClick = (userId: string) => {
-    console.log('handleChatClick fired for user:', userId);
+    console.log("handleChatClick fired for user:", userId);
     setChatUserId(userId);
     setShowMessageModal(true);
-  }
+  };
   const [mounted, setMounted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<string>("light");
 
   // Enhanced theme detection functionality
   useEffect(() => {
     const detectThemeChange = () => {
-      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      const theme =
+        document.documentElement.getAttribute("data-theme") || "light";
       setCurrentTheme(theme);
     };
 
     detectThemeChange();
-    window.addEventListener('theme-change', detectThemeChange);
+    window.addEventListener("theme-change", detectThemeChange);
 
     return () => {
-      window.removeEventListener('theme-change', detectThemeChange);
+      window.removeEventListener("theme-change", detectThemeChange);
     };
   }, []);
   const [isLiked, setIsLiked] = useState(false);
@@ -124,15 +125,11 @@ export default function PostCard({
 
   // Ensure post.likes is always an array
   const likesArray = Array.isArray(post.likes) ? post.likes : [];
-  
+
   // Initialize local like count from props
   useEffect(() => {
     setLocalLikeCount(likesArray.length);
   }, [likesArray.length]);
-
-  useEffect(() => {
-
-  }, [post._id, likesArray]);
 
   // Define fetchComments before using it in useEffect
   const fetchComments = async () => {
@@ -153,13 +150,14 @@ export default function PostCard({
   // Effect to detect theme changes
   useEffect(() => {
     const detectTheme = () => {
-      const theme = document.documentElement.getAttribute("data-theme") || "light";
+      const theme =
+        document.documentElement.getAttribute("data-theme") || "light";
       setCurrentTheme(theme);
     };
 
     // Initial detection
     detectTheme();
-    
+
     // Listen for theme changes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -168,9 +166,9 @@ export default function PostCard({
         }
       });
     });
-    
+
     observer.observe(document.documentElement, { attributes: true });
-    
+
     return () => observer.disconnect();
   }, []);
 
@@ -203,8 +201,6 @@ export default function PostCard({
       return;
     }
 
-
-
     // Listen for like updates
     const likeCleanup = listenForRealtimeEvents(
       "post-like-update",
@@ -223,7 +219,7 @@ export default function PostCard({
               // Only update the like state if it's from another user
               if (data.userId !== session?.user?.id) {
                 setIsLiked(isCurrentUserLiked);
-                
+
                 // Update local like count from server data
                 if (data.likeCount !== undefined) {
                   setLocalLikeCount(data.likeCount);
@@ -533,9 +529,11 @@ export default function PostCard({
       // Toggle the like state immediately for better UX
       const newLikedState = !isLiked;
       setIsLiked(newLikedState);
-      
+
       // Update local like count immediately for responsive UI
-      setLocalLikeCount(prevCount => newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1));
+      setLocalLikeCount((prevCount) =>
+        newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1)
+      );
 
       console.log(
         `Sending like request for post ${post._id}, action: ${
@@ -565,7 +563,7 @@ export default function PostCard({
       // Get the updated likes from the server response
       const data = await response.json();
       console.log(`Server response for like update:`, data);
-      
+
       // Sync with server data
       if (data.likeCount !== undefined) {
         setLocalLikeCount(data.likeCount);
@@ -699,7 +697,9 @@ export default function PostCard({
       const updatedComments = comments.map((c) => {
         if (c._id === commentId) {
           const newLikes = isLiked
-            ? c.likes.filter((likeId) => likeId.toString() !== userId.toString())
+            ? c.likes.filter(
+                (likeId) => likeId.toString() !== userId.toString()
+              )
             : [...c.likes, userId];
           return { ...c, likes: newLikes };
         }
@@ -777,8 +777,8 @@ export default function PostCard({
 
         // Update the comment with the server response to ensure data consistency
         // but only update the specific comment that changed, not reload all comments
-        setComments(prevComments => 
-          prevComments.map(c => 
+        setComments((prevComments) =>
+          prevComments.map((c) =>
             c._id === commentId ? { ...c, likes: updatedComment.likes } : c
           )
         );
@@ -833,19 +833,19 @@ export default function PostCard({
           onMessageSent={() => {}}
         />
       )}
-      <Card 
+      <Card
         className="post-card hover:shadow-lg transition-all duration-300 cursor-pointer max-w-4xl w-full mx-auto overflow-visible"
         style={{
-          backgroundColor: 'var(--card-bg)',
-          color: 'var(--text-primary)',
-          borderColor: 'var(--border-color)'
+          backgroundColor: "var(--card-bg)",
+          color: "var(--text-primary)",
+          borderColor: "var(--border-color)",
         }}
       >
         <CardHeader className="flex flex-row items-center justify-between py-2 px-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4">
               <ProfileAvatar
-                imageUrl={post.authorProfileImage} // Changed to authorProfileImage
+                imageUrl={post.authorProfileImage}
                 name={authorName}
                 size="md"
                 className="flex-shrink-0"
@@ -873,7 +873,10 @@ export default function PostCard({
                     return <p className="font-medium">{authorName}</p>;
                   }
                 })()}
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <p
+                  className="text-sm"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   {formatRelativeTime(post.createdAt)}
                 </p>
               </div>
@@ -893,13 +896,16 @@ export default function PostCard({
         >
           <div className="flex">
             <div className="w-3/4">
-              <h2 className="font-bold text-2xl mb-2">{post.title}</h2>
+              <h2 className="text-[20px] font-bold mb-2">{post.title}</h2>
               <div className="space-y-2">
                 {content.map(
                   (item: { type: string; content: string }, index: number) => (
                     <div key={index}>
                       {item?.type === "text" && (
-                        <p className="" style={{ color: 'var(--text-secondary)' }}>
+                        <p
+                          className=""
+                          style={{ color: "var(--text-secondary)" }}
+                        >
                           {item.content
                             .split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
                             .map((part, i) => {
@@ -911,8 +917,8 @@ export default function PostCard({
                                     href={url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="hover:underline" 
-                                    style={{ color: 'var(--brand-primary)' }}
+                                    className="hover:underline"
+                                    style={{ color: "var(--brand-primary)" }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     {part}
@@ -923,8 +929,8 @@ export default function PostCard({
                             })}
                         </p>
                       )}
-                      {item?.type === "link" && (
-                        item.content.startsWith("http") ? (
+                      {item?.type === "link" &&
+                        (item.content.startsWith("http") ? (
                           <a
                             href={item.content}
                             target="_blank"
@@ -942,8 +948,7 @@ export default function PostCard({
                           >
                             {item.content}
                           </Link>
-                        )
-                      )}
+                        ))}
                       {/* {item?.type === "image" && (
                         <div className="my-3 rounded-lg overflow-hidden">
                           <img 
@@ -970,15 +975,19 @@ export default function PostCard({
               </div>
             </div>
             <div className="w-1/4 flex justify-center">
-              {content.filter(item => item?.type === "image").length > 0 && (
+              {content.filter((item) => item?.type === "image").length > 0 && (
                 <div className="flex flex-wrap gap-2 justify-center">
                   {content
-                    .filter(item => item?.type === "image")
+                    .filter((item) => item?.type === "image")
                     .slice(0, 1)
                     .map((item, index) => (
                       <img
                         key={index}
-                        src={isS3Url(item.content) ? convertS3UrlToR2(item.content) : item.content}
+                        src={
+                          isS3Url(item.content)
+                            ? convertS3UrlToR2(item.content)
+                            : item.content
+                        }
                         alt=""
                         className="w-20 h-20 object-cover rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
                       />
@@ -1019,15 +1028,16 @@ export default function PostCard({
         </CardFooter>
       </Card>
 
-  
-
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-6xl w-[800px] max-h-[80vh] backdrop-filter backdrop-blur-lg bg-opacity-30 bg-white/10 overflow-y-auto p-4">
+        <DialogContent
+          className="max-w-6xl w-[800px] max-h-[80vh] overflow-y-auto p-4"
+          style={{ backgroundColor: "var(--card-bg)" }}
+        >
           <DialogTitle className="sr-only">Post Details</DialogTitle>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <ProfileAvatar
-                imageUrl={post.profileImage}
+                imageUrl={post.authorProfileImage}
                 name={authorName}
                 size="md"
                 className="flex-shrink-0"
@@ -1055,7 +1065,10 @@ export default function PostCard({
                     return <h3 className="font-semibold">{authorName}</h3>;
                   }
                 })()}
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <p
+                  className="text-sm"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   {formatRelativeTime(post.createdAt)}
                 </p>
               </div>
@@ -1111,13 +1124,13 @@ export default function PostCard({
             </DropdownMenu>
           </div>
 
-          <h2 className="text-xl font-bold mb-4">{post.title}</h2>
+          <h2 className="text-[20px] font-bold mb-4">{post.title}</h2>
           <div className="space-y-4 mb-6">
             {content.map(
               (item: { type: string; content: string }, index: number) => (
                 <div key={index}>
                   {item.type === "text" && (
-                    <p className="" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="" style={{ color: "var(--text-secondary)" }}>
                       {item.content
                         .split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g)
                         .map((part, i) => {
@@ -1186,7 +1199,7 @@ export default function PostCard({
                 size="sm"
                 onClick={() => handleLikePost()}
                 className="flex items-center gap-2"
-                style={isLiked ? { color: 'var(--brand-primary)' } : {}}
+                style={isLiked ? { color: "var(--brand-primary)" } : {}}
               >
                 <Heart
                   className="h-4 w-4"
@@ -1211,7 +1224,11 @@ export default function PostCard({
                 {comments.map((comment) => (
                   <div
                     key={comment._id}
-                    className="border rounded-lg p-4" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}
+                    className="border rounded-lg p-4"
+                    style={{
+                      backgroundColor: "var(--card-bg)",
+                      borderColor: "var(--border-color)",
+                    }}
                   >
                     <div className="flex flex-col space-y-1">
                       <div className="flex justify-between items-start">
@@ -1235,7 +1252,9 @@ export default function PostCard({
                             <p className="font-semibold text-sm">
                               {comment.authorName} •{" "}
                               <span className="font-normal text-gray-500">
-                                {formatRelativeTime(new Date(comment.createdAt))}
+                                {formatRelativeTime(
+                                  new Date(comment.createdAt)
+                                )}
                               </span>
                             </p>
                           </UserHoverCard>
@@ -1327,7 +1346,8 @@ export default function PostCard({
                               placeholder="Write a reply..."
                               value={newComment}
                               onChange={(e) => setNewComment(e.target.value)}
-                              className="flex-1" style={{ backgroundColor: 'var(--input-bg)' }}
+                              className="flex-1"
+                              style={{ backgroundColor: "var(--input-bg)" }}
                             />
                             {showReplyEmojiPicker && (
                               <div
@@ -1373,7 +1393,8 @@ export default function PostCard({
                       placeholder="Write a comment..."
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      className="flex-1" style={{ backgroundColor: 'var(--input-bg)' }}
+                      className="flex-1"
+                      style={{ backgroundColor: "var(--input-bg)" }}
                     />
                     {showEmojiPicker && (
                       <div
@@ -1410,4 +1431,3 @@ export default function PostCard({
     </>
   );
 }
-

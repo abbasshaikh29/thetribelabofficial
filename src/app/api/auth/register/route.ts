@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { User } from "@/models/User";
+import { PlatformSubscription } from "@/models/PlatformSubscription";
 import { dbconnect } from "@/lib/db";
 import { generateVerificationToken, sendVerificationEmail } from "@/lib/resend";
 
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 24); // Token expires in 24 hours
 
     // Create user with verification token
-    await User.create({
+    const newUser = await User.create({
       email,
       password,
       username,
@@ -64,6 +65,15 @@ export async function POST(request: NextRequest) {
       verificationToken,
       verificationTokenExpiry,
     });
+
+    // Auto-create platform subscription with 14-day trial
+    try {
+      await createPlatformSubscription(newUser._id);
+      console.log("Platform subscription created for user:", newUser._id);
+    } catch (subscriptionError) {
+      console.error("Failed to create platform subscription:", subscriptionError);
+      // Continue with registration even if subscription creation fails
+    }
 
     // Send verification email
     try {
@@ -169,4 +179,43 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Create platform subscription with 14-day trial for new admin
+ */
+async function createPlatformSubscription(adminId: any) {
+  const now = new Date();
+  const trialEndDate = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000)); // 14 days from now
+
+  const platformSubscription = new PlatformSubscription({
+    adminId,
+    planType: 'starter',
+    amount: 240000, // ₹2,400 in paise
+    currency: 'INR',
+    interval: 'monthly',
+    status: 'trial',
+    trialStartDate: now,
+    trialEndDate,
+    isTrialActive: true,
+    currentPeriodStart: now,
+    currentPeriodEnd: trialEndDate,
+    nextBillingDate: trialEndDate,
+    feeDeductionEnabled: true,
+    pendingFeeAmount: 0,
+    totalFeesDeducted: 0,
+    gracePeriodDays: 7,
+    isInGracePeriod: false,
+    consecutiveFailures: 0,
+    maxFailuresAllowed: 3,
+    autoReactivateOnPayment: true,
+    invoiceGeneration: true,
+    emailNotifications: true,
+    monthlyEarnings: 0,
+    memberCount: 0,
+    transactionCount: 0
+  });
+
+  await platformSubscription.save();
+  return platformSubscription;
 }

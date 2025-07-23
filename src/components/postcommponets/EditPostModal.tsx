@@ -51,6 +51,49 @@ export function EditPostModal({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to safely sanitize URLs - prevents XSS attacks
+  // This function validates URL format and blocks dangerous protocols
+  const getSafeUrl = (url: string): string => {
+    try {
+      const cleanUrl = url.trim();
+      const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
+      const lowerCaseUrl = cleanUrl.toLowerCase();
+
+      if (
+        dangerousProtocols.some((protocol) => lowerCaseUrl.startsWith(protocol))
+      ) {
+        console.warn(`Blocked dangerous URL protocol: ${url}`);
+        return "#";
+      }
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+          return cleanUrl;
+        }
+      }
+
+      if (
+        cleanUrl.startsWith("/") ||
+        cleanUrl.startsWith("./") ||
+        cleanUrl.startsWith("../")
+      ) {
+        if (
+          !lowerCaseUrl.includes("javascript:") &&
+          !lowerCaseUrl.includes("vbscript:")
+        ) {
+          return cleanUrl;
+        }
+      }
+
+      console.warn(`Invalid URL format: ${url}`);
+      return "#";
+    } catch (e) {
+      console.warn(`URL parsing failed: ${url}`);
+      return "#";
+    }
+  };
+
   // Reset form when modal opens with new post data
   useEffect(() => {
     if (isOpen) {
@@ -201,7 +244,12 @@ export function EditPostModal({
                     <div className="flex items-center gap-2">
                       <LinkIcon className="h-4 w-4" aria-hidden="true" />
                       <a
-                        href={item.content}
+                        href={(() => {
+                          // Explicit URL sanitization to help static analysis tools detect security measures
+                          const url = item?.content;
+                          if (!url || typeof url !== "string") return "#";
+                          return getSafeUrl(url);
+                        })()}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-500"
@@ -272,10 +320,10 @@ export function EditPostModal({
                   currentType === "text"
                     ? "Write your post content..."
                     : currentType === "image"
-                    ? "Enter image URL..."
-                    : currentType === "link"
-                    ? "Enter link URL..."
-                    : "Enter file URL..."
+                      ? "Enter image URL..."
+                      : currentType === "link"
+                        ? "Enter link URL..."
+                        : "Enter file URL..."
                 }
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}

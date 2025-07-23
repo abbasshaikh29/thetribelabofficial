@@ -1,25 +1,28 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 interface CommunityBillingData {
   _id: string;
-  adminTrialInfo?: {
-    activated: boolean;
-    startDate?: string;
-    endDate?: string;
-    hasUsedTrial?: boolean;
-    trialUsedAt?: string;
-    cancelled?: boolean;
-    cancelledDate?: string;
-  };
+  // Legacy trial system only
   paymentStatus?: "unpaid" | "trial" | "paid" | "expired";
   subscriptionEndDate?: string;
   subscriptionId?: string;
   subscriptionStatus?: string;
   freeTrialActivated?: boolean;
+  adminTrialInfo?: {
+    activated?: boolean;
+    startDate?: string;
+    endDate?: string;
+  };
 }
 
 interface CommunityBillingContextType {
@@ -38,12 +41,16 @@ interface CommunityBillingContextType {
   slug: string | null;
 }
 
-const CommunityBillingContext = createContext<CommunityBillingContextType | undefined>(undefined);
+const CommunityBillingContext = createContext<
+  CommunityBillingContextType | undefined
+>(undefined);
 
 export const useCommunityBilling = () => {
   const context = useContext(CommunityBillingContext);
   if (!context) {
-    throw new Error("useCommunityBilling must be used within a CommunityBillingProvider");
+    throw new Error(
+      "useCommunityBilling must be used within a CommunityBillingProvider"
+    );
   }
   return context;
 };
@@ -52,10 +59,14 @@ interface CommunityBillingProviderProps {
   children: ReactNode;
 }
 
-export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> = ({ children }) => {
+export const CommunityBillingProvider: React.FC<
+  CommunityBillingProviderProps
+> = ({ children }) => {
   const { slug } = useParams<{ slug: string }>();
   const { data: session } = useSession();
-  const [billingData, setBillingData] = useState<CommunityBillingData | null>(null);
+  const [billingData, setBillingData] = useState<CommunityBillingData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,11 +83,16 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
       if (isRefresh) setRefreshing(true);
       setError(null);
 
-      console.log('CommunityBillingContext: Starting fetch for slug:', slug, 'session:', !!session?.user?.id);
+      console.log(
+        "CommunityBillingContext: Starting fetch for slug:",
+        slug,
+        "session:",
+        !!session?.user?.id
+      );
 
       // Use the same comprehensive status endpoint as the billing page
       const statusResponse = await fetch(`/api/community/${slug}/status`, {
-        method: 'GET',
+        method: "GET",
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -86,16 +102,23 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
         },
       });
 
-      console.log('Status endpoint response status:', statusResponse.status, statusResponse.ok);
+      console.log(
+        "Status endpoint response status:",
+        statusResponse.status,
+        statusResponse.ok
+      );
 
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
-        console.log('Community status data received (context):', JSON.stringify(statusData, null, 2));
+        console.log(
+          "Community status data received (context):",
+          JSON.stringify(statusData, null, 2)
+        );
 
         if (statusData.found && statusData.community) {
           const newBillingData = {
             _id: statusData.community._id.toString(),
-            adminTrialInfo: statusData.community.adminTrialInfo,
+            // Legacy trial system only
             paymentStatus: statusData.community.paymentStatus,
             subscriptionEndDate: statusData.community.subscriptionEndDate,
             subscriptionId: statusData.community.subscriptionId,
@@ -110,8 +133,11 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
             daysRemaining: statusData.daysRemaining || 0,
           });
 
-          console.log('Setting billing data from status (context):', newBillingData);
-          console.log('Setting status data (context):', {
+          console.log(
+            "Setting billing data from status (context):",
+            newBillingData
+          );
+          console.log("Setting status data (context):", {
             hasActiveSubscription: statusData.hasActiveSubscription,
             hasActiveTrial: statusData.hasActiveTrial,
             daysRemaining: statusData.daysRemaining,
@@ -119,15 +145,25 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
           setBillingData(newBillingData);
           return; // Exit early if status endpoint worked
         } else {
-          console.log('Status endpoint returned data but no community found:', statusData);
+          console.log(
+            "Status endpoint returned data but no community found:",
+            statusData
+          );
         }
       } else {
         const errorText = await statusResponse.text();
-        console.log('Status endpoint failed with status:', statusResponse.status, 'error:', errorText);
+        console.log(
+          "Status endpoint failed with status:",
+          statusResponse.status,
+          "error:",
+          errorText
+        );
       }
 
       // Fallback to basic community endpoint if status endpoint fails
-      console.log('Status endpoint failed, falling back to basic community endpoint');
+      console.log(
+        "Status endpoint failed, falling back to basic community endpoint"
+      );
       const response = await fetch(`/api/community/${slug}`, {
         cache: "no-store",
         headers: {
@@ -137,21 +173,28 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
         },
       });
 
-      console.log('Basic community endpoint response status:', response.status, response.ok);
+      console.log(
+        "Basic community endpoint response status:",
+        response.status,
+        response.ok
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('Basic community endpoint failed:', errorText);
+        console.log("Basic community endpoint failed:", errorText);
         throw new Error("Failed to fetch community data");
       }
 
       const data = await response.json();
-      console.log('Community billing data received (context fallback):', JSON.stringify(data, null, 2));
+      console.log(
+        "Community billing data received (context fallback):",
+        JSON.stringify(data, null, 2)
+      );
 
       if (data && data._id) {
         const newBillingData = {
           _id: data._id.toString(),
-          adminTrialInfo: data.adminTrialInfo,
+          // Legacy trial system only
           paymentStatus: data.paymentStatus,
           subscriptionEndDate: data.subscriptionEndDate,
           subscriptionId: data.subscriptionId,
@@ -159,12 +202,15 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
           freeTrialActivated: data.freeTrialActivated,
         };
 
-        console.log('Setting billing data (context fallback):', newBillingData);
+        console.log("Setting billing data (context fallback):", newBillingData);
         setBillingData(newBillingData);
         // Clear status data since we're using fallback
         setStatusData(null);
       } else {
-        console.log('Basic community endpoint returned data but no valid community:', data);
+        console.log(
+          "Basic community endpoint returned data but no valid community:",
+          data
+        );
       }
     } catch (err) {
       console.error("Error fetching billing data:", err);
@@ -180,24 +226,35 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
   };
 
   const updateBillingData = (updates: Partial<CommunityBillingData>) => {
-    setBillingData(prev => prev ? { ...prev, ...updates } : null);
+    setBillingData((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
   // Initial fetch and periodic refresh
   useEffect(() => {
     if (slug && session?.user?.id) {
-      console.log('CommunityBillingContext: Initial fetch triggered for slug:', slug, 'user:', session.user.id);
+      console.log(
+        "CommunityBillingContext: Initial fetch triggered for slug:",
+        slug,
+        "user:",
+        session.user.id
+      );
       fetchBillingData();
     } else {
-      console.log('CommunityBillingContext: Skipping fetch - slug:', slug, 'session:', !!session?.user?.id);
+      console.log(
+        "CommunityBillingContext: Skipping fetch - slug:",
+        slug,
+        "session:",
+        !!session?.user?.id
+      );
     }
   }, [slug, session?.user?.id]);
 
   // Computed values - use status endpoint data when available, fallback to local calculations
   const calculateDaysRemaining = () => {
-    if (!billingData?.adminTrialInfo?.endDate) return 0;
+    // Legacy trial system - use subscriptionEndDate
+    if (!billingData?.subscriptionEndDate) return 0;
 
-    const endDate = new Date(billingData.adminTrialInfo.endDate);
+    const endDate = new Date(billingData.subscriptionEndDate);
     const today = new Date();
 
     const diffTime = endDate.getTime() - today.getTime();
@@ -207,32 +264,36 @@ export const CommunityBillingProvider: React.FC<CommunityBillingProviderProps> =
   };
 
   const isTrialActiveFallback = () => {
-    if (billingData?.paymentStatus === 'paid') {
+    if (billingData?.paymentStatus === "paid") {
       return false;
     }
 
-    const hasActiveAdminTrial = billingData?.adminTrialInfo?.activated === true &&
-      billingData?.adminTrialInfo?.endDate &&
-      new Date(billingData.adminTrialInfo.endDate) > new Date();
-
-    const hasActiveLegacyTrial = billingData?.freeTrialActivated === true &&
+    // Legacy trial system only
+    const hasActiveLegacyTrial =
+      billingData?.freeTrialActivated === true &&
       billingData?.subscriptionEndDate &&
       new Date(billingData.subscriptionEndDate) > new Date() &&
-      billingData?.paymentStatus === 'trial';
+      billingData?.paymentStatus === "trial";
 
-    return hasActiveAdminTrial || hasActiveLegacyTrial;
+    return hasActiveLegacyTrial;
   };
 
   const isSubscriptionActiveFallback = () => {
-    return billingData?.paymentStatus === 'paid' &&
+    return (
+      billingData?.paymentStatus === "paid" &&
       billingData?.subscriptionEndDate &&
-      new Date(billingData.subscriptionEndDate) > new Date();
+      new Date(billingData.subscriptionEndDate) > new Date()
+    );
   };
 
   // Use status endpoint data when available, otherwise use fallback calculations
   const daysRemaining = statusData?.daysRemaining ?? calculateDaysRemaining();
-  const trialActive = statusData ? statusData.hasActiveTrial : isTrialActiveFallback();
-  const subscriptionActive = statusData ? statusData.hasActiveSubscription : isSubscriptionActiveFallback();
+  const trialActive = statusData
+    ? statusData.hasActiveTrial
+    : isTrialActiveFallback();
+  const subscriptionActive = statusData
+    ? statusData.hasActiveSubscription
+    : isSubscriptionActiveFallback();
   const percentRemaining = trialActive ? (daysRemaining / 14) * 100 : 0;
 
   // Debug logging removed for production build

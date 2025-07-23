@@ -3,13 +3,17 @@ import { User } from "@/models/User";
 import {
   sendRenewalReminderEmail,
   sendPaymentFailedEmail,
-  sendSubscriptionCancelledEmail
+  sendSubscriptionCancelledEmail,
 } from "./resend";
 
 interface NotificationData {
   userId: string;
   subscriptionId: string;
-  type: "renewal_reminder" | "payment_failed" | "subscription_cancelled" | "payment_retry";
+  type:
+    | "renewal_reminder"
+    | "payment_failed"
+    | "subscription_cancelled"
+    | "payment_retry";
   data?: any;
 }
 
@@ -17,18 +21,23 @@ interface NotificationData {
  * Send subscription-related notifications
  */
 export class SubscriptionNotificationService {
-  
   /**
    * Send renewal reminder notification to community admin
    */
-  static async sendCommunityAdminRenewalReminder(subscriptionId: string, daysUntilRenewal: number) {
+  static async sendCommunityAdminRenewalReminder(
+    subscriptionId: string,
+    daysUntilRenewal: number
+  ) {
     try {
       const subscription = await Subscription.findOne({
-        razorpaySubscriptionId: subscriptionId
+        razorpaySubscriptionId: subscriptionId,
       }).populate("communityId");
 
       if (!subscription) {
-        console.error("Subscription not found for renewal reminder:", subscriptionId);
+        console.error(
+          "Subscription not found for renewal reminder:",
+          subscriptionId
+        );
         return;
       }
 
@@ -40,12 +49,16 @@ export class SubscriptionNotificationService {
 
       // Check if notification was already sent recently
       const recentNotification = subscription.notificationsSent.find(
-        (n: { type: string; sentAt: Date }) => n.type === "renewal_reminder" &&
-        new Date(n.sentAt).getTime() > Date.now() - 24 * 60 * 60 * 1000 // 24 hours
+        (n: { type: string; sentAt: Date }) =>
+          n.type === "renewal_reminder" &&
+          new Date(n.sentAt).getTime() > Date.now() - 24 * 60 * 60 * 1000 // 24 hours
       );
 
       if (recentNotification) {
-        console.log("Renewal reminder already sent recently for:", subscriptionId);
+        console.log(
+          "Renewal reminder already sent recently for:",
+          subscriptionId
+        );
         return;
       }
 
@@ -59,19 +72,22 @@ export class SubscriptionNotificationService {
         subscriptionAmount: subscription.amount,
         currency: subscription.currency,
         renewalDate: subscription.currentEnd,
-        daysUntilRenewal
+        daysUntilRenewal,
       });
 
       // Record notification
       subscription.notificationsSent.push({
         type: "renewal_reminder",
         sentAt: new Date(),
-        channel: "email"
+        channel: "email",
       });
 
       await subscription.save();
 
-      console.log("Community admin renewal reminder sent for subscription:", subscriptionId);
+      console.log(
+        "Community admin renewal reminder sent for subscription:",
+        subscriptionId
+      );
     } catch (error) {
       console.error("Error sending community admin renewal reminder:", error);
     }
@@ -80,14 +96,20 @@ export class SubscriptionNotificationService {
   /**
    * Send payment failed notification to community admin
    */
-  static async sendCommunityAdminPaymentFailedNotification(subscriptionId: string, failureReason?: string) {
+  static async sendCommunityAdminPaymentFailedNotification(
+    subscriptionId: string,
+    failureReason?: string
+  ) {
     try {
       const subscription = await Subscription.findOne({
-        razorpaySubscriptionId: subscriptionId
+        razorpaySubscriptionId: subscriptionId,
       }).populate("communityId");
 
       if (!subscription) {
-        console.error("Subscription not found for payment failure:", subscriptionId);
+        console.error(
+          "Subscription not found for payment failure:",
+          subscriptionId
+        );
         return;
       }
 
@@ -110,21 +132,27 @@ export class SubscriptionNotificationService {
         retryAttempts: subscription.retryAttempts,
         maxRetryAttempts: subscription.maxRetryAttempts,
         nextRetryDate: subscription.nextRetryAt,
-        paymentUrl: `${process.env.NEXTAUTH_URL}/billing/${subscription.communityId?.slug || subscription.communityId?._id}`
+        paymentUrl: `${process.env.NEXTAUTH_URL}/billing/${subscription.communityId?.slug || subscription.communityId?._id}`,
       });
 
       // Record notification
       subscription.notificationsSent.push({
         type: "payment_failed",
         sentAt: new Date(),
-        channel: "email"
+        channel: "email",
       });
 
       await subscription.save();
 
-      console.log("Community admin payment failed notification sent for subscription:", subscriptionId);
+      console.log(
+        "Community admin payment failed notification sent for subscription:",
+        subscriptionId
+      );
     } catch (error) {
-      console.error("Error sending community admin payment failed notification:", error);
+      console.error(
+        "Error sending community admin payment failed notification:",
+        error
+      );
     }
   }
 
@@ -134,11 +162,14 @@ export class SubscriptionNotificationService {
   static async sendSubscriptionCancelledNotification(subscriptionId: string) {
     try {
       const subscription = await Subscription.findOne({
-        razorpaySubscriptionId: subscriptionId
+        razorpaySubscriptionId: subscriptionId,
       });
 
       if (!subscription) {
-        console.error("Subscription not found for cancellation:", subscriptionId);
+        console.error(
+          "Subscription not found for cancellation:",
+          subscriptionId
+        );
         return;
       }
 
@@ -158,22 +189,28 @@ export class SubscriptionNotificationService {
           subscriptionAmount: subscription.amount,
           currency: subscription.currency,
           endDate: subscription.endedAt || subscription.currentEnd,
-          accessUntil: subscription.currentEnd
-        }
+          accessUntil: subscription.currentEnd,
+        },
       });
 
       // Record notification
       subscription.notificationsSent.push({
         type: "subscription_cancelled",
         sentAt: new Date(),
-        channel: "email"
+        channel: "email",
       });
 
       await subscription.save();
 
-      console.log("Subscription cancelled notification sent for:", subscriptionId);
+      console.log(
+        "Subscription cancelled notification sent for:",
+        subscriptionId
+      );
     } catch (error) {
-      console.error("Error sending subscription cancelled notification:", error);
+      console.error(
+        "Error sending subscription cancelled notification:",
+        error
+      );
     }
   }
 
@@ -183,11 +220,14 @@ export class SubscriptionNotificationService {
   static async sendPaymentRetryNotification(subscriptionId: string) {
     try {
       const subscription = await Subscription.findOne({
-        razorpaySubscriptionId: subscriptionId
+        razorpaySubscriptionId: subscriptionId,
       });
 
       if (!subscription) {
-        console.error("Subscription not found for payment retry:", subscriptionId);
+        console.error(
+          "Subscription not found for payment retry:",
+          subscriptionId
+        );
         return;
       }
 
@@ -208,20 +248,23 @@ export class SubscriptionNotificationService {
           currency: subscription.currency,
           retryAttempt: subscription.retryAttempts,
           maxRetryAttempts: subscription.maxRetryAttempts,
-          nextRetryDate: subscription.nextRetryAt
-        }
+          nextRetryDate: subscription.nextRetryAt,
+        },
       });
 
       // Record notification
       subscription.notificationsSent.push({
         type: "payment_retry",
         sentAt: new Date(),
-        channel: "email"
+        channel: "email",
       });
 
       await subscription.save();
 
-      console.log("Payment retry notification sent for subscription:", subscriptionId);
+      console.log(
+        "Payment retry notification sent for subscription:",
+        subscriptionId
+      );
     } catch (error) {
       console.error("Error sending payment retry notification:", error);
     }
@@ -236,10 +279,10 @@ export class SubscriptionNotificationService {
   ) {
     try {
       const subscription = await Subscription.findOne({
-        razorpaySubscriptionId: subscriptionId
+        razorpaySubscriptionId: subscriptionId,
       })
-        .populate('userId')
-        .populate('communityId');
+        .populate("userId")
+        .populate("communityId");
 
       if (!subscription || !subscription.userId || !subscription.communityId) {
         console.error(
@@ -256,13 +299,13 @@ export class SubscriptionNotificationService {
         adminName: adminUser.name || adminUser.email,
         communityName,
         cancellationDate: new Date(),
-        accessEndDate: subscription.currentEnd
+        accessEndDate: subscription.currentEnd,
       });
 
       subscription.notificationsSent.push({
         type: "subscription_cancelled_admin",
         sentAt: new Date(),
-        channel: "email"
+        channel: "email",
       });
 
       await subscription.save();
@@ -276,16 +319,37 @@ export class SubscriptionNotificationService {
   }
 
   /**
-   * Send a generic email notification (stub for now)
+   * Send a generic email notification using EmailQueue
    */
-  static async sendEmailNotification(_options: {
+  static async sendEmailNotification(options: {
     to: string;
     subject: string;
     template: string;
     data?: any;
   }): Promise<void> {
-    // ERROR: This method is not implemented. Use EmailQueue.addJob or sendEmail directly instead.
-    throw new Error('sendEmailNotification is not implemented. Use EmailQueue.addJob or sendEmail directly.');
-  }
+    try {
+      const { EmailQueue } = await import("./email-queue");
 
+      // Create a simple HTML template
+      const htmlContent = `
+        <html>
+          <body>
+            <h2>${options.subject}</h2>
+            <p>Template: ${options.template}</p>
+            ${options.data ? `<pre>${JSON.stringify(options.data, null, 2)}</pre>` : ""}
+          </body>
+        </html>
+      `;
+
+      await EmailQueue.addJob({
+        to: options.to,
+        subject: options.subject,
+        html: htmlContent,
+        category: options.template,
+      });
+    } catch (error) {
+      console.error("Failed to queue email notification:", error);
+      throw error;
+    }
+  }
 }

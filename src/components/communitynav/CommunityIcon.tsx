@@ -65,10 +65,17 @@ const CommunityIcon: React.FC<CommunityIconProps> = ({
   // Fallback component (uses a default placeholder image in /public)
   const renderFallback = () => (
     <div
-      className={`${sizeClasses[size]} rounded-md overflow-hidden ${borderClasses} ${shadowClasses} flex-shrink-0 bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center ${className}`}
+      className={`${sizeClasses[size]} rounded-md overflow-hidden ${borderClasses} ${shadowClasses} flex-shrink-0 flex items-center justify-center ${className}`}
+      style={{
+        backgroundColor: "rgba(252, 170, 150, 0.1)", // --brand-primary with opacity
+        color: "#fcaa96", // --brand-primary
+      }}
       title={name}
     >
-      <Users className="text-primary opacity-70" size={size === "lg" ? 32 : size === "md" ? 24 : 20} />
+      <Users
+        style={{ color: "#fcaa96" }}
+        size={size === "lg" ? 32 : size === "md" ? 24 : 20}
+      />
     </div>
   );
 
@@ -89,14 +96,14 @@ const CommunityIcon: React.FC<CommunityIconProps> = ({
       title={name}
     >
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
           <Loader2 className="w-4 h-4 animate-spin text-primary" />
         </div>
       )}
       <img
         src={processedSrc}
         alt={`${name} icon`}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover rounded-md"
         loading={priority ? "eager" : "lazy"}
         onLoad={handleImageLoad}
         onError={handleImageError}

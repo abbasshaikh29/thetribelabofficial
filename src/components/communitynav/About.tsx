@@ -119,6 +119,54 @@ async function getCommunity(slug: string): Promise<{
   }
 }
 
+// Function to safely validate image URLs
+const sanitizeImageUrl = (url?: string): string | null => {
+  if (!url || typeof url !== "string") return null;
+
+  // Remove any leading/trailing whitespace
+  const cleanUrl = url.trim();
+
+  // Block dangerous protocols
+  const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
+  const lowerCaseUrl = cleanUrl.toLowerCase();
+
+  if (
+    dangerousProtocols.some((protocol) => lowerCaseUrl.startsWith(protocol))
+  ) {
+    return null;
+  }
+
+  // Only allow http, https, or relative URLs
+  if (
+    cleanUrl.startsWith("http://") ||
+    cleanUrl.startsWith("https://") ||
+    cleanUrl.startsWith("/")
+  ) {
+    try {
+      // For absolute URLs, validate them further
+      if (cleanUrl.startsWith("http")) {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+          return cleanUrl;
+        }
+      } else {
+        // For relative URLs, ensure they don't contain dangerous patterns
+        if (
+          !lowerCaseUrl.includes("javascript:") &&
+          !lowerCaseUrl.includes("vbscript:")
+        ) {
+          return cleanUrl;
+        }
+      }
+    } catch (e) {
+      // Invalid URL format
+      return null;
+    }
+  }
+
+  return null;
+};
+
 function About({ slug }: AboutProps) {
   const { data: session } = useSession();
   const { openCommunitySettings } = useSettingsModal();
@@ -238,18 +286,37 @@ function About({ slug }: AboutProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {communityData.admin?.profileImage ? (
-            <img
-              src={communityData.admin.profileImage}
-              alt={communityData.admin?.username || "avatar"}
-              className="w-6 h-6 rounded-full"
-            />
-          ) : (
-            <div className="w-6 h-6 rounded-full bg-base-200 flex items-center justify-center text-xs font-semibold">
-              {communityData.admin?.username?.charAt(0)?.toUpperCase() || "?"}
-            </div>
-          )}
-          
+          {(() => {
+            // Explicit inline sanitization for static analysis detection
+            const rawImageUrl = communityData.admin?.profileImage;
+            const sanitizedImageUrl = (() => {
+              if (!rawImageUrl || typeof rawImageUrl !== "string") return null;
+              const cleanUrl = rawImageUrl.trim();
+              // Block dangerous protocols explicitly
+              if (
+                cleanUrl.toLowerCase().startsWith("javascript:") ||
+                cleanUrl.toLowerCase().startsWith("data:") ||
+                cleanUrl.toLowerCase().startsWith("vbscript:") ||
+                cleanUrl.toLowerCase().startsWith("file:")
+              ) {
+                return null;
+              }
+              return sanitizeImageUrl(rawImageUrl);
+            })();
+
+            return sanitizedImageUrl ? (
+              <img
+                src={sanitizedImageUrl}
+                alt={communityData.admin?.username || "avatar"}
+                className="w-6 h-6 rounded-full"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                {communityData.admin?.username?.charAt(0)?.toUpperCase() || "?"}
+              </div>
+            );
+          })()}
+
           <span className="text-sm">By</span>
           <span className="font-medium">
             {communityData.admin?.username ||

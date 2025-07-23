@@ -19,10 +19,15 @@ function CalendarPage() {
   }, []);
 
   return (
-    <div className="calander-page" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div
+      className="calander-page"
+      style={{ backgroundColor: "var(--bg-primary)" }}
+    >
       <CommunityNav />
-      <div className="mt-6">
-        <Calander />
+      <div className="w-full flex justify-center items-center">
+        <div className="w-full md:w-2/3 mt-6">
+          <Calander />
+        </div>
       </div>
     </div>
   );

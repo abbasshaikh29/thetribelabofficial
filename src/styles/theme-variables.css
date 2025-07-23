@@ -67,7 +67,7 @@
 /* Dark Theme */
 [data-theme="dark"] {
   /* Background colors */
-  --bg-primary: #24272c;
+  --bg-primary: #0a0a0a;
   --bg-secondary: #1a1e24;
   --bg-tertiary: #1f2226;
   --bg-accent: #475569;

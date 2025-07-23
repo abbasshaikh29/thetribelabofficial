@@ -7,6 +7,22 @@ import Link from "next/link";
 import { useNotification } from "../Notification";
 import ProfileAvatar from "../ProfileAvatar";
 
+// Helper to sanitize image URLs to prevent XSS
+function sanitizeImgUrl(url?: string): string {
+  if (!url || typeof url !== "string") return "/default-avatar.png";
+  url = url.trim();
+  // Only allow http, https, or relative URLs
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("/")
+  ) {
+    return url;
+  }
+  // Fallback to a safe default
+  return "/default-avatar.png";
+}
+
 interface NotificationItem {
   _id: string;
   type: string;
@@ -86,8 +102,11 @@ export default function NotificationList({
         console.warn("Failed to mark notification as read:", response.status);
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.warn("Mark as read request timed out for notification:", notificationId);
+      if (error instanceof Error && error.name === "AbortError") {
+        console.warn(
+          "Mark as read request timed out for notification:",
+          notificationId
+        );
       } else {
         console.error("Error marking notification as read:", error);
       }
@@ -112,7 +131,7 @@ export default function NotificationList({
     <div className="overflow-y-auto max-h-[70vh]">
       {notifications.map((notification) => {
         const notificationLink = getNotificationLink(notification);
-        
+
         return (
           <Link
             key={notification._id}
@@ -124,7 +143,7 @@ export default function NotificationList({
               onClose();
             }}
           >
-            <div 
+            <div
               className={`flex items-start p-3 hover:bg-base-200 cursor-pointer border-b border-base-200 ${
                 !notification.read ? "bg-base-200/50" : ""
               }`}
@@ -133,22 +152,22 @@ export default function NotificationList({
                 <div className="w-10 h-10 rounded-full">
                   {notification.createdBy?.profileImage ? (
                     <img
-                      src={notification.createdBy.profileImage}
+                      src={sanitizeImgUrl(notification.createdBy.profileImage)}
                       alt={notification.createdBy.username}
                       className="object-cover w-full h-full rounded-full"
                     />
                   ) : (
                     <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
-                      {notification.createdBy?.username?.charAt(0).toUpperCase() || "U"}
+                      {notification.createdBy?.username
+                        ?.charAt(0)
+                        .toUpperCase() || "U"}
                     </div>
                   )}
                 </div>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium truncate">
-                    {notification.title}
-                  </h4>
+                  <h4 className="font-medium truncate">{notification.title}</h4>
                   {notification.createdAt && (
                     <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
                       {formatRelativeTime(new Date(notification.createdAt))}
@@ -162,8 +181,10 @@ export default function NotificationList({
                   <div className="flex items-center mt-1 text-xs text-gray-500">
                     <span className="flex items-center">
                       {notification.communityId.iconImageUrl ? (
-                        <img 
-                          src={notification.communityId.iconImageUrl} 
+                        <img
+                          src={sanitizeImgUrl(
+                            notification.communityId.iconImageUrl
+                          )}
                           alt={notification.communityId.name}
                           className="w-3 h-3 rounded-full mr-1"
                         />

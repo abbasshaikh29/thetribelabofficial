@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     await dbconnect();
 
     // Find the community
-    const community = await Community.findById(communityId);
+    const community = await (Community as any).findById(communityId);
     if (!community) {
       return NextResponse.json(
         { error: "Community not found" },

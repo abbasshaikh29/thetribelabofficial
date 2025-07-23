@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       resolvedCommunityId = communityId;
     } else {
       // If it's a slug, resolve it to ObjectId
-      const community = await Community.findOne({ slug: communityId }).select("_id");
+      const community = await (Community as any).findOne({ slug: communityId }).select("_id");
       if (!community) {
         return NextResponse.json(
           { error: "Community not found" },

@@ -1,27 +1,6 @@
 import { dbconnect } from './db';
 import mongoose from 'mongoose';
-
-// Define the notification schema if it doesn't exist
-let Notification: mongoose.Model<any>;
-
-try {
-  // Try to get the existing model
-  Notification = mongoose.model('Notification');
-} catch (error) {
-  // Model doesn't exist, create it
-  const notificationSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    title: { type: String, required: true },
-    message: { type: String, required: true },
-    type: { type: String, required: true },
-    isRead: { type: Boolean, default: false },
-    linkUrl: { type: String },
-    metadata: { type: mongoose.Schema.Types.Mixed },
-    createdAt: { type: Date, default: Date.now },
-  });
-
-  Notification = mongoose.model('Notification', notificationSchema);
-}
+import { Notification, INotification } from '@/models/Notification';
 
 export interface NotificationData {
   userId: string;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
 import { createPlan } from "@/lib/razorpay";
-import { CommunitySubscriptionPlan } from "@/models/PaymentPlan";
+import { CommunitySubscriptionPlan, ICommunitySubscriptionPlan } from "@/models/PaymentPlan";
 
 // POST /api/admin/fix-plans - Clean up old plans and create new ones with proper Razorpay integration
 export async function POST(request: NextRequest) {
@@ -17,11 +17,11 @@ export async function POST(request: NextRequest) {
     console.log("🔄 Starting plan cleanup and recreation...");
 
     // Step 1: Deactivate all existing plans (don't delete to preserve history)
-    const existingPlans = await CommunitySubscriptionPlan.find({ isActive: true });
+    const existingPlans = await (CommunitySubscriptionPlan as any).find({ isActive: true });
     console.log(`Found ${existingPlans.length} existing plans to deactivate`);
 
     for (const plan of existingPlans) {
-      await CommunitySubscriptionPlan.findByIdAndUpdate(plan._id, { isActive: false });
+      await (CommunitySubscriptionPlan as any).findByIdAndUpdate(plan._id, { isActive: false });
       console.log(`Deactivated plan: ${plan.name}`);
     }
 
@@ -171,10 +171,10 @@ export async function GET(request: NextRequest) {
 
     await dbconnect();
     
-    const activePlans = await CommunitySubscriptionPlan.find({ isActive: true })
+    const activePlans = await (CommunitySubscriptionPlan as any).find({ isActive: true })
       .sort({ amount: 1 });
     
-    const inactivePlans = await CommunitySubscriptionPlan.find({ isActive: false })
+    const inactivePlans = await (CommunitySubscriptionPlan as any).find({ isActive: false })
       .sort({ createdAt: -1 });
 
     return NextResponse.json({
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       inactivePlans,
       activeCount: activePlans.length,
       inactiveCount: inactivePlans.length,
-      hasValidPlans: activePlans.some(plan => plan.razorpayPlanId && !plan.razorpayPlanId.includes('default') && !plan.razorpayPlanId.includes('legacy'))
+      hasValidPlans: activePlans.some((plan: ICommunitySubscriptionPlan) => plan.razorpayPlanId && !plan.razorpayPlanId.includes('default') && !plan.razorpayPlanId.includes('legacy'))
     });
 
   } catch (error: any) {

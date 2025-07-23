@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth-helpers";
 import { dbconnect } from "@/lib/db";
-import { Course } from "@/models/Course";
+import { Course, ICourse } from "@/models/Course";
 import { Community } from "@/models/Community";
 import { Lesson } from "@/models/Lesson";
 import mongoose from "mongoose";
@@ -67,14 +67,14 @@ export async function GET(
 
     // Get lesson counts for each course
     const coursesWithLessonCount = await Promise.all(
-      courses.map(async (course) => {
+      courses.map(async (course: ICourse) => {
         const lessonCount = await Lesson.countDocuments({
           courseId: course._id,
           isPublished: true,
         });
 
         return {
-          ...course.toObject(),
+          ...(course as any).toObject(),
           lessonCount,
           communitySlug: slug,
         };

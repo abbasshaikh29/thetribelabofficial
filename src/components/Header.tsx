@@ -114,10 +114,14 @@ export default function Header() {
   };
   return (
     <div
-      className="navbar sticky top-0 z-40 shadow-sm border-b transition-colors duration-300"
+      className="navbar sticky top-0 z-40 border-b transition-all duration-300"
       style={{
-        backgroundColor: "var(--bg-secondary)",
-        borderColor: "var(--border-color)"
+        backgroundColor: "rgba(0, 0, 0, 0.2)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+        borderRadius: "0 0 16px 16px"
       }}
     >
       <div className="container mx-auto flex items-center justify-between">
@@ -164,10 +168,12 @@ export default function Header() {
                 tabIndex={0}
                 className="dropdown-content z-[1] text-lg menu p-2 rounded-box w-72 border transition-all duration-200"
                 style={{
-                  backgroundColor: "var(--dropdown-bg)",
+                  backgroundColor: "rgba(0, 0, 0, 0.8)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
                   color: "var(--text-primary)",
-                  borderColor: "var(--border-color)",
-                  boxShadow: "var(--shadow-lg)"
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
                 }}
               >
                 <li className="">
@@ -285,10 +291,14 @@ export default function Header() {
                 tabIndex={0}
                 className="dropdown-content z-[1] menu p-2 shadow-lg rounded-box w-64 mt-4"
                 style={{
-                  backgroundColor: "var(--dropdown-bg)",
+                  backgroundColor: "rgba(0, 0, 0, 0.8)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
                   color: "var(--text-primary)",
                   maxWidth: "300px",
                   overflow: "hidden",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
                 }}
               >
                 {session ? (

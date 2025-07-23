@@ -34,8 +34,8 @@ export async function dbconnect() {
     } as unknown as mongoose.Connection;
   }
 
-  // Return cached connection if available
-  if (cached.conn) {
+  // Return cached connection if available and still connected
+  if (cached.conn && cached.conn.readyState === 1) {
     return cached.conn;
   }
 
@@ -44,32 +44,62 @@ export async function dbconnect() {
     throw new Error("Cannot connect to MongoDB: URI is not defined");
   }
 
-  // Create a new connection if none exists
+  // Create a new connection if none exists or if the promise failed
   if (!cached.promise) {
     const opts = {
-      bufferCommands: true,
+      bufferCommands: false, // Disable mongoose buffering
       maxPoolSize: 10,
-      ssl: true,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000, // Reduced from 30 seconds
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000, // Reduced from 30 seconds
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      authSource: "admin", // Specify auth source
+      // Removed deprecated options: useNewUrlParser, useUnifiedTopology
     };
+
+    console.log("Attempting to connect to MongoDB...");
+    console.log(
+      "MongoDB URI pattern:",
+      MONGODB_URI.replace(/:\/\/[^@]+@/, "://***:***@")
+    );
 
     try {
       cached.promise = mongoose
         .connect(MONGODB_URI, opts)
         .then(() => {
-          // Connection successful
+          console.log("MongoDB connected successfully");
           return mongoose.connection;
         })
         .catch((error) => {
-          // Error handling
+          console.error("MongoDB connection error:", error.message);
+
+          // Provide specific error messages for common issues
+          if (error.message.includes("ECONNREFUSED")) {
+            console.error("TROUBLESHOOTING GUIDE:");
+            console.error(
+              "1. Check if MongoDB Atlas cluster is active (not paused)"
+            );
+            console.error("2. Verify Network Access settings in MongoDB Atlas");
+            console.error(
+              "3. Add your IP address (0.0.0.0/0 for development) to the IP Access List"
+            );
+            console.error("4. Ensure cluster is in the correct region");
+          }
+
+          if (error.message.includes("authentication failed")) {
+            console.error(
+              "Authentication issue - check username/password in connection string"
+            );
+          }
+
+          // Reset promise on failure so we can retry
           cached.promise = null;
           throw new Error(`Failed to connect to MongoDB: ${error.message}`);
         });
     } catch (error: any) {
-      // Error in mongoose.connect
+      console.error("Error in mongoose.connect:", error);
+      // Reset promise on failure so we can retry
       cached.promise = null;
       throw new Error(`Failed to connect to MongoDB: ${error.message}`);
     }
@@ -77,9 +107,30 @@ export async function dbconnect() {
 
   try {
     cached.conn = await cached.promise;
+
+    // Set up connection event listeners
+    if (cached.conn) {
+      cached.conn.on("disconnected", () => {
+        console.warn("MongoDB disconnected");
+        cached.conn = null;
+        cached.promise = null;
+      });
+
+      cached.conn.on("error", (error) => {
+        console.error("MongoDB connection error:", error);
+        cached.conn = null;
+        cached.promise = null;
+      });
+
+      cached.conn.on("reconnected", () => {
+        console.log("MongoDB reconnected");
+      });
+    }
   } catch (error) {
-    // Error resolving MongoDB connection
+    console.error("Error resolving MongoDB connection:", error);
+    // Reset both promise and connection on failure
     cached.promise = null;
+    cached.conn = null;
     throw new Error(`Failed to resolve MongoDB connection: ${error}`);
   }
 

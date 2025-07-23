@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get("activeOnly") === "true";
+    const planType = searchParams.get("planType");
+    const communityId = searchParams.get("communityId");
 
     // Build query
     const query: any = {};
@@ -21,8 +23,18 @@ export async function GET(request: NextRequest) {
       query.isActive = true;
     }
 
+    if (planType) {
+      query.planType = planType;
+    }
+
+    if (communityId) {
+      query.communityId = communityId;
+    }
+
     // Fetch plans
-    const plans = await CommunitySubscriptionPlan.find(query).sort({ amount: 1 });
+    const plans = await CommunitySubscriptionPlan.find(query).sort({
+      amount: 1,
+    });
 
     return NextResponse.json(plans);
   } catch (error) {
@@ -94,7 +106,7 @@ export async function POST(request: NextRequest) {
         "Unlimited events",
         "Unlimited channels",
         "Basic analytics",
-        "Email support"
+        "Email support",
       ],
       allowCustomBranding,
       prioritySupport,

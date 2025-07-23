@@ -179,7 +179,7 @@ emailLogSchema.statics.getDeliveryStats = async function(
     clickRate: 0
   };
 
-  stats.forEach(stat => {
+  stats.forEach((stat: { _id: string; count: number }) => {
     const status = stat._id as string;
     if (status in result && status !== 'total' && status !== 'deliveryRate' && status !== 'openRate' && status !== 'clickRate') {
       (result as any)[status] = stat.count;

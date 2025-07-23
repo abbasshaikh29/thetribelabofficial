@@ -13,17 +13,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    await dbconnect();
+
     // Check if user is admin (implement your admin check logic)
     const user = await User.findById(session.user.id);
-    if (!user || !user.isAdmin) {
+    if (!user || (user.role !== "admin" && user.role !== "platform_admin")) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
-    await dbconnect();
-
     // Step 1: Create or find default starter plan
     let starterPlan = await CommunitySubscriptionPlan.findOne({ name: "Legacy Starter" });
-    
+
     if (!starterPlan) {
       starterPlan = await CommunitySubscriptionPlan.create({
         name: "Legacy Starter",
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Find communities without subscription plans
-    const communitiesWithoutPlans = await Community.find({
+    const communitiesWithoutPlans = await (Community as any).find({
       $or: [
         { subscriptionPlanId: { $exists: false } },
         { subscriptionPlanId: null }
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
     const communitiesWithoutPlans = totalCommunities - communitiesWithPlans;
 
     // Get legacy starter plan info
-    const legacyPlan = await CommunitySubscriptionPlan.findOne({ name: "Legacy Starter" });
+    const legacyPlan = await (CommunitySubscriptionPlan as any).findOne({ name: "Legacy Starter" });
 
     return NextResponse.json({
       success: true,

@@ -21,10 +21,13 @@ export interface UserGamificationData {
 /**
  * Calculate user's current level based on points
  */
-export function calculateLevel(points: number, levels = DEFAULT_LEVELS): LevelInfo {
+export function calculateLevel(
+  points: number,
+  levels = DEFAULT_LEVELS
+): LevelInfo {
   // Find the highest level the user qualifies for
   let currentLevel = levels[0];
-  
+
   for (const level of levels) {
     if (points >= level.pointsRequired) {
       currentLevel = level;
@@ -34,16 +37,19 @@ export function calculateLevel(points: number, levels = DEFAULT_LEVELS): LevelIn
   }
 
   // Calculate progress to next level
-  const nextLevelIndex = levels.findIndex(l => l.level === currentLevel.level + 1);
+  const nextLevelIndex = levels.findIndex(
+    (l) => l.level === currentLevel.level + 1
+  );
   const nextLevel = nextLevelIndex !== -1 ? levels[nextLevelIndex] : null;
-  
+
   let pointsToNext = 0;
   let progress = 100; // Default to 100% if at max level
-  
+
   if (nextLevel) {
     pointsToNext = nextLevel.pointsRequired - points;
     const pointsInCurrentRange = points - currentLevel.pointsRequired;
-    const totalPointsInRange = nextLevel.pointsRequired - currentLevel.pointsRequired;
+    const totalPointsInRange =
+      nextLevel.pointsRequired - currentLevel.pointsRequired;
     progress = Math.round((pointsInCurrentRange / totalPointsInRange) * 100);
   }
 
@@ -61,20 +67,24 @@ export function calculateLevel(points: number, levels = DEFAULT_LEVELS): LevelIn
  */
 export async function getLevelConfig(communityId: string) {
   await dbconnect();
-  
-  const config = await LevelConfig.findOne({ 
-    communityId: new mongoose.Types.ObjectId(communityId) 
+
+  const config = await LevelConfig.findOne({
+    communityId: new mongoose.Types.ObjectId(communityId),
   });
-  
+
   return config ? config.levels : DEFAULT_LEVELS;
 }
 
 /**
  * Award points to a user and update their level
  */
-export async function awardPoints(userId: string, points: number, communityId?: string) {
+export async function awardPoints(
+  userId: string,
+  points: number,
+  communityId?: string
+) {
   await dbconnect();
-  
+
   const user = await User.findById(userId);
   if (!user) {
     throw new Error("User not found");
@@ -85,8 +95,10 @@ export async function awardPoints(userId: string, points: number, communityId?: 
   const newMonthlyPoints = (user.monthlyPoints || 0) + points;
 
   // Get level configuration
-  const levels = communityId ? await getLevelConfig(communityId) : DEFAULT_LEVELS;
-  
+  const levels = communityId
+    ? await getLevelConfig(communityId)
+    : DEFAULT_LEVELS;
+
   // Calculate new level
   const levelInfo = calculateLevel(newTotalPoints, levels);
 
@@ -109,9 +121,22 @@ export async function awardPoints(userId: string, points: number, communityId?: 
 /**
  * Get user's gamification data
  */
-export async function getUserGamificationData(userId: string, communityId?: string): Promise<UserGamificationData> {
+export async function getUserGamificationData(
+  userId: string,
+  communityId?: string
+): Promise<UserGamificationData> {
   await dbconnect();
-  
+
+  // Validate userId before using it
+  if (
+    !userId ||
+    typeof userId !== "string" ||
+    userId === "[object Object]" ||
+    !mongoose.Types.ObjectId.isValid(userId)
+  ) {
+    throw new Error(`Invalid userId provided: ${userId}`);
+  }
+
   const user = await User.findById(userId);
   if (!user) {
     throw new Error("User not found");
@@ -119,13 +144,20 @@ export async function getUserGamificationData(userId: string, communityId?: stri
 
   const points = user.points || 0;
   const monthlyPoints = user.monthlyPoints || 0;
-  
+
   // Get level configuration
-  const levels = communityId ? await getLevelConfig(communityId) : DEFAULT_LEVELS;
-  
+  const levels = communityId
+    ? await getLevelConfig(communityId)
+    : DEFAULT_LEVELS;
+
   const currentLevel = calculateLevel(points, levels);
-  const nextLevelIndex = levels.findIndex((l: any) => l.level === currentLevel.level + 1);
-  const nextLevel = nextLevelIndex !== -1 ? calculateLevel(levels[nextLevelIndex].pointsRequired, levels) : undefined;
+  const nextLevelIndex = levels.findIndex(
+    (l: any) => l.level === currentLevel.level + 1
+  );
+  const nextLevel =
+    nextLevelIndex !== -1
+      ? calculateLevel(levels[nextLevelIndex].pointsRequired, levels)
+      : undefined;
 
   return {
     points,
@@ -140,7 +172,7 @@ export async function getUserGamificationData(userId: string, communityId?: stri
  */
 export async function resetMonthlyPoints() {
   await dbconnect();
-  
+
   const now = new Date();
   await User.updateMany(
     {},
@@ -160,7 +192,7 @@ export async function getLeaderboard(
   limit: number = 10
 ) {
   await dbconnect();
-  
+
   const now = new Date();
   let matchStage: any = {};
   let sortField = "points";
@@ -204,7 +236,7 @@ export async function getLeaderboard(
   const users = await User.aggregate(pipeline);
 
   // Add level information and rank
-  return users.map((user, index) => {
+  return users.map((user: any, index: number) => {
     const levelInfo = calculateLevel(user.points, levels);
     return {
       ...user,

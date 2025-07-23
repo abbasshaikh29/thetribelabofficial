@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { useNotification } from "@/components/Notification";
 import CommunityNav from "@/components/communitynav/CommunityNav";
 import { ImageIcon, X, Upload, Tag, Plus } from "lucide-react";
-import { generateUploadUrl } from "@/lib/s3";
+import { generateUploadUrl } from "@/lib/r2";
 
 interface FormData {
   title: string;
@@ -115,8 +115,8 @@ export default function CreateCourse() {
       };
       reader.readAsDataURL(file);
 
-      // Get a presigned URL for S3 upload
-      const response = await fetch("/api/upload/s3", {
+      // Get a presigned URL for R2 upload
+      const response = await fetch("/api/upload/r2", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

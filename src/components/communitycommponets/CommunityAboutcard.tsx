@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useSettingsModal } from "@/components/modals/SettingsModalProvider";
 import { Users, Link as LinkIcon, Copy, Check } from "lucide-react";
 import CommunityJoinForm from "@/components/CommunityJoinForm";
+import PaymentGatewayDialog from "@/components/community/PaymentGatewayDialog";
 import { useRouter } from "next/navigation";
 
 async function getCommunity(slug: string): Promise<{
@@ -77,6 +78,7 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -180,7 +182,7 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
       communityData.community.price && communityData.community.price > 0;
 
     if (isPaid) {
-      router.push(`/community/${slug}/payment-plans/new`);
+      setShowPaymentDialog(true);
     } else {
       setShowJoinModal(true);
     }
@@ -225,7 +227,7 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-primary/40 to-primary/20 flex items-center justify-center">
-               <Users size={64} className="text-primary opacity-70" />
+              <Users size={64} className="text-primary opacity-70" />
             </div>
           )}
         </div>
@@ -380,10 +382,21 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
 
       {/* Join Modal */}
       {showJoinModal && communityData.community && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-base-100 p-6 rounded-lg shadow-xl w-full max-w-lg">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "var(--modal-overlay)" }}
+        >
+          <div
+            className="p-6 rounded-lg shadow-xl w-full max-w-lg border"
+            style={{
+              backgroundColor: "var(--modal-bg)",
+              borderColor: "var(--border-color)",
+            }}
+          >
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Join {communityData.community.name}</h2>
+              <h2 className="text-xl font-bold">
+                Join {communityData.community.name}
+              </h2>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
@@ -406,6 +419,26 @@ function CommunityAboutcard({ slug }: NewCommmunityPageProps) {
             />
           </div>
         </div>
+      )}
+
+      {/* Payment Gateway Dialog */}
+      {showPaymentDialog && communityData.community && (
+        <PaymentGatewayDialog
+          isOpen={showPaymentDialog}
+          onClose={() => setShowPaymentDialog(false)}
+          communityId={communityData.community._id as unknown as string}
+          communitySlug={slug}
+          communityName={communityData.community.name}
+          price={communityData.community.price || 0}
+          currency={communityData.community.currency}
+          pricingType={communityData.community.pricingType}
+          onSuccess={() => {
+            setShowPaymentDialog(false);
+            // refresh member state
+            setIsMember(true);
+            setHasPendingRequest(false);
+          }}
+        />
       )}
     </>
   );

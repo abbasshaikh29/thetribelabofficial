@@ -1,7 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, AlertCircle, CheckCircle, Clock, Calendar, CreditCard, X, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Calendar,
+  CreditCard,
+  X,
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { apiClient } from "@/lib/api-client";
@@ -9,8 +18,9 @@ import RazorpayCheckout from "@/components/payments/RazorpayCheckout";
 import { useSettingsModal } from "@/components/modals/SettingsModalProvider";
 import { useCommunityBilling } from "@/contexts/CommunityBillingContext";
 import TrialReminderBanner from "@/components/trial/TrialReminderBanner";
-import PayNowButton, { TrialConversionButton } from "@/components/payments/PayNowButton";
-
+import PayNowButton, {
+  TrialConversionButton,
+} from "@/components/payments/PayNowButton";
 
 export default function CommunityBillingInfo() {
   const { slug } = useParams<{ slug: string }>();
@@ -27,7 +37,7 @@ export default function CommunityBillingInfo() {
     daysRemaining,
     trialActive,
     subscriptionActive,
-    percentRemaining
+    percentRemaining,
   } = useCommunityBilling();
   const [activatingTrial, setActivatingTrial] = useState(false);
   const [activationSuccess, setActivationSuccess] = useState(false);
@@ -42,15 +52,21 @@ export default function CommunityBillingInfo() {
   const fetchAvailablePlans = async () => {
     try {
       // First, ensure a default plan exists
-      await fetch('/api/community-subscription-plans/ensure-default', { method: 'POST' });
+      await fetch("/api/community-subscription-plans/ensure-default", {
+        method: "POST",
+      });
 
       // Then fetch available plans
-      const response = await fetch('/api/community-subscription-plans?isActive=true');
+      const response = await fetch(
+        "/api/community-subscription-plans?isActive=true"
+      );
       if (response.ok) {
         const data = await response.json();
         if (data.plans && data.plans.length > 0) {
           // Use the first available monthly plan, or any plan if no monthly plan exists
-          const monthlyPlan = data.plans.find((plan: any) => plan.interval === 'monthly');
+          const monthlyPlan = data.plans.find(
+            (plan: any) => plan.interval === "monthly"
+          );
           setAvailablePlan(monthlyPlan || data.plans[0]);
         }
       }
@@ -68,30 +84,30 @@ export default function CommunityBillingInfo() {
   // Direct trial activation function for troubleshooting
   const activateTrialDirectly = async () => {
     if (!slug || !session?.user?.id) return;
-    
+
     try {
       setActivatingTrial(true);
       setLocalError(null);
-      
+
       // Call the new direct trial activation endpoint
       const response = await fetch(`/api/community/${slug}/activate-trial`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
-        }
+          "Content-Type": "application/json",
+        },
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to activate trial');
+        throw new Error(errorData.error || "Failed to activate trial");
       }
-      
+
       const data = await response.json();
-      console.log('Trial activation response:', data);
-      
+      console.log("Trial activation response:", data);
+
       // Set success state
       setActivationSuccess(true);
-      
+
       // Update the billing info without refreshing the page
       if (data.community) {
         updateBillingData({
@@ -99,67 +115,81 @@ export default function CommunityBillingInfo() {
           adminTrialInfo: data.community.adminTrialInfo,
           paymentStatus: data.community.paymentStatus,
           subscriptionEndDate: data.community.subscriptionEndDate,
-          freeTrialActivated: data.community.freeTrialActivated
+          freeTrialActivated: data.community.freeTrialActivated,
         });
       }
     } catch (err) {
-      console.error('Error activating trial directly:', err);
-      setLocalError(err instanceof Error ? err.message : 'Failed to activate trial');
+      console.error("Error activating trial directly:", err);
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to activate trial"
+      );
     } finally {
       setActivatingTrial(false);
     }
   };
-  
+
   // Function to cancel the trial
   const cancelTrial = async () => {
     if (!slug || !session?.user?.id) return;
-    
-    if (!confirm("Are you sure you want to cancel your trial? This will immediately suspend your community until you subscribe.")) {
+
+    if (
+      !confirm(
+        "Are you sure you want to cancel your trial? This will immediately suspend your community until you subscribe."
+      )
+    ) {
       return;
     }
-    
+
     try {
       setCancellingTrial(true);
       setLocalError(null);
-      
+
       // Call the trial cancellation endpoint
       const response = await fetch(`/api/community/${slug}/cancel-trial`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
-        }
+          "Content-Type": "application/json",
+        },
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to cancel trial');
+        throw new Error(errorData.error || "Failed to cancel trial");
       }
-      
+
       const data = await response.json();
-      console.log('Trial cancellation response:', data);
-      
+      console.log("Trial cancellation response:", data);
+
       // Set success state
       setCancelSuccess(true);
-      
+
       // Update the billing info without refreshing the page
       if (data.community) {
         updateBillingData({
           _id: data.community._id,
-          adminTrialInfo: { activated: false, startDate: undefined, endDate: undefined },
+          adminTrialInfo: {
+            activated: false,
+            startDate: undefined,
+            endDate: undefined,
+          },
           paymentStatus: data.community.paymentStatus,
           subscriptionEndDate: undefined,
-          freeTrialActivated: false
+          freeTrialActivated: false,
         });
       }
-      
+
       // Show success message
-      alert('Trial cancelled successfully. Your community has been suspended until you subscribe.');
-      
+      alert(
+        "Trial cancelled successfully. Your community has been suspended until you subscribe."
+      );
+
       // Refresh the page to show updated status
       router.refresh();
     } catch (err) {
-      console.error('Error cancelling trial:', err);
-      setLocalError(err instanceof Error ? err.message : 'Failed to cancel trial');
+      console.error("Error cancelling trial:", err);
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to cancel trial"
+      );
     } finally {
       setCancellingTrial(false);
     }
@@ -198,14 +228,14 @@ export default function CommunityBillingInfo() {
         requestBody = {
           subscriptionId: billingInfo.subscriptionId,
           communityId: billingInfo._id,
-          cancelAtCycleEnd: true
+          cancelAtCycleEnd: true,
         };
       } else {
         // Use community-based cancellation endpoint
         endpoint = `/api/community/${slug}/cancel-subscription`;
         requestBody = {
           communityId: billingInfo._id,
-          cancelAtCycleEnd: true
+          cancelAtCycleEnd: true,
         };
       }
 
@@ -223,30 +253,85 @@ export default function CommunityBillingInfo() {
         alert(data.message);
         // Update billing info to reflect cancellation
         updateBillingData({
-          subscriptionStatus: "cancelled"
+          subscriptionStatus: "cancelled",
         });
       } else {
         throw new Error(data.error || "Failed to cancel subscription");
       }
     } catch (err) {
       console.error("Error cancelling subscription:", err);
-      setLocalError(err instanceof Error ? err.message : "Failed to cancel subscription");
+      setLocalError(
+        err instanceof Error ? err.message : "Failed to cancel subscription"
+      );
     } finally {
       setCancellingSubscription(false);
     }
   };
 
-
-
   // Format date to a readable string
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
+
+  // Get comprehensive status information
+  const getComprehensiveStatus = () => {
+    if (subscriptionActive) {
+      return {
+        status: "Premium (Active)",
+        color: "text-success",
+        bgColor: "bg-success/10",
+        icon: <CheckCircle className="w-5 h-5 text-success" />,
+      };
+    }
+
+    if (trialActive) {
+      const isUrgent = daysRemaining <= 3;
+      return {
+        status: `Trial Period (${daysRemaining} days left)`,
+        color: isUrgent ? "text-error" : "text-warning",
+        bgColor: isUrgent ? "bg-error/10" : "bg-warning/10",
+        icon: isUrgent ? (
+          <AlertCircle className="w-5 h-5 text-error animate-pulse" />
+        ) : (
+          <Clock className="w-5 h-5 text-warning" />
+        ),
+      };
+    }
+
+    // Check if there's a subscription ID but no active status (pending activation)
+    if (billingInfo?.subscriptionId && !subscriptionActive) {
+      return {
+        status: "Subscription Pending Activation",
+        color: "text-info",
+        bgColor: "bg-info/10",
+        icon: <Clock className="w-5 h-5 text-info animate-pulse" />,
+      };
+    }
+
+    // Handle different payment statuses
+    if (billingInfo?.paymentStatus === "expired") {
+      return {
+        status: "Expired",
+        color: "text-error",
+        bgColor: "bg-error/10",
+        icon: <AlertCircle className="w-5 h-5 text-error" />,
+      };
+    }
+
+    return {
+      status: "Free Plan",
+      color: "text-base-content",
+      bgColor: "bg-base-200",
+      icon: <AlertCircle className="w-5 h-5" />,
+    };
+  };
+
+  const statusInfo = getComprehensiveStatus();
 
   // Payment success handler
   const handlePaymentSuccess = async (subscription: any) => {
@@ -255,9 +340,11 @@ export default function CommunityBillingInfo() {
 
       // Update local billing info to reflect paid status
       updateBillingData({
-        paymentStatus: 'paid',
-        subscriptionStatus: 'active',
-        subscriptionEndDate: subscription.currentEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        paymentStatus: "paid",
+        subscriptionStatus: "active",
+        subscriptionEndDate:
+          subscription.currentEnd ||
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       });
 
       // Close the settings modal
@@ -267,7 +354,9 @@ export default function CommunityBillingInfo() {
       // The community page will handle showing the success notification
       router.push(`/Newcompage/${slug}?subscription=success`);
     } catch (err) {
-      setLocalError("Payment was successful but we couldn't update your community. Please contact support.");
+      setLocalError(
+        "Payment was successful but we couldn't update your community. Please contact support."
+      );
       console.error(err);
     } finally {
       setPaymentLoading(false);
@@ -276,7 +365,10 @@ export default function CommunityBillingInfo() {
 
   // Payment error handler
   const handlePaymentError = (error: any) => {
-    setLocalError("Payment failed: " + (error.description || error.message || "Unknown error"));
+    setLocalError(
+      "Payment failed: " +
+        (error.description || error.message || "Unknown error")
+    );
     console.error("Payment error:", error);
     setPaymentLoading(false);
   };
@@ -346,8 +438,6 @@ export default function CommunityBillingInfo() {
     );
   }
 
-
-
   return (
     <div className="space-y-8">
       {/* Trial Reminder Banner */}
@@ -364,13 +454,13 @@ export default function CommunityBillingInfo() {
           className="btn btn-outline btn-sm"
           title="Refresh billing information"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          <RefreshCw
+            className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+          />
+          {refreshing ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
-
-      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="card bg-base-200 shadow-md">
           <div className="card-body">
@@ -378,44 +468,64 @@ export default function CommunityBillingInfo() {
               <Clock className="w-5 h-5" />
               Trial Status
             </h3>
-            
+
             {subscriptionActive ? (
               <div className="space-y-4">
                 <div className="alert alert-success">
                   <CheckCircle className="w-5 h-5 mr-2" />
-                  <p>You have an active subscription! Trial period is no longer needed.</p>
+                  <p>
+                    You have an active subscription! Trial period is no longer
+                    needed.
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Status:</span>
-                  <span className="font-semibold text-success">Active Subscription</span>
+                  <span className="font-semibold text-success">
+                    Active Subscription
+                  </span>
                 </div>
               </div>
             ) : trialActive ? (
               <div className="space-y-4">
                 <div className="alert alert-success">
                   <CheckCircle className="w-5 h-5 mr-2" />
-                  <p>Trial is active! You have access to all premium features.</p>
+                  <p>
+                    Trial is active! You have access to all premium features.
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Trial Period:</span>
-                  <span className="font-semibold" style={{ color: "var(--brand-primary)" }}>{daysRemaining} days remaining</span>
+                  <span
+                    className="font-semibold"
+                    style={{ color: "var(--brand-primary)" }}
+                  >
+                    {daysRemaining} days remaining
+                  </span>
                 </div>
 
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                   <div
                     className="h-2.5 rounded-full"
-                    style={{ width: `${percentRemaining}%`, backgroundColor: "var(--brand-primary)" }}
+                    style={{
+                      width: `${percentRemaining}%`,
+                      backgroundColor: "var(--brand-primary)",
+                    }}
                   ></div>
                 </div>
-                
+
                 <div className="flex justify-between text-xs text-gray-600">
                   {billingInfo?.adminTrialInfo?.startDate && (
-                    <span>Started: {formatDate(billingInfo.adminTrialInfo.startDate)}</span>
+                    <span>
+                      Started:{" "}
+                      {formatDate(billingInfo.adminTrialInfo.startDate)}
+                    </span>
                   )}
                   {billingInfo?.adminTrialInfo?.endDate && (
-                    <span>Ends: {formatDate(billingInfo.adminTrialInfo.endDate)}</span>
+                    <span>
+                      Ends: {formatDate(billingInfo.adminTrialInfo.endDate)}
+                    </span>
                   )}
                 </div>
 
@@ -437,7 +547,10 @@ export default function CommunityBillingInfo() {
                   </button>
                   {cancelSuccess && (
                     <div className="alert alert-success mt-2">
-                      <p>Trial cancelled successfully. Your community has been suspended.</p>
+                      <p>
+                        Trial cancelled successfully. Your community has been
+                        suspended.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -445,12 +558,18 @@ export default function CommunityBillingInfo() {
             ) : (
               <div className="space-y-4">
                 <div className="alert alert-info">
-                  <p>No active trial. You can start a 14-day free trial or subscribe directly.</p>
+                  <p>
+                    No active trial. You can start a 14-day free trial or
+                    subscribe directly.
+                  </p>
                 </div>
 
                 {activationSuccess ? (
                   <div className="alert alert-success">
-                    <p>Trial activated successfully! The page will refresh shortly.</p>
+                    <p>
+                      Trial activated successfully! The page will refresh
+                      shortly.
+                    </p>
                   </div>
                 ) : localError ? (
                   <div className="alert alert-error">
@@ -481,21 +600,19 @@ export default function CommunityBillingInfo() {
               <CheckCircle className="w-5 h-5" />
               Subscription Status
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Current Status:</span>
-                <span className={`font-semibold ${
-                  subscriptionActive ? "text-success" :
-                  trialActive ? "text-warning" :
-                  "text-error"
-                }`}>
-                  {subscriptionActive ? "Premium (Active)" :
-                   trialActive ? "Trial Period" :
-                   billingInfo?.paymentStatus === "expired" ? "Expired" : "Free Plan"}
-                </span>
+                <div className="flex items-center gap-2">
+                  {statusInfo.icon}
+                  <span className={`font-semibold ${statusInfo.color}`}>
+                    {statusInfo.status}
+                  </span>
+                </div>
               </div>
 
+              {/* Show additional details based on status */}
               {subscriptionActive && billingInfo?.subscriptionEndDate && (
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Renews On:</span>
@@ -503,7 +620,54 @@ export default function CommunityBillingInfo() {
                 </div>
               )}
 
-              {subscriptionActive && billingInfo?.subscriptionStatus !== "cancelled" && (
+              {billingInfo?.subscriptionId && (
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Subscription ID:</span>
+                  <span className="text-sm font-mono">
+                    {billingInfo.subscriptionId}
+                  </span>
+                </div>
+              )}
+
+              {trialActive && billingInfo?.adminTrialInfo?.endDate && (
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Trial Ends:</span>
+                  <span>{formatDate(billingInfo.adminTrialInfo.endDate)}</span>
+                </div>
+              )}
+
+              {/* Status indicator box */}
+              <div className={`p-3 rounded-lg ${statusInfo.bgColor}`}>
+                <div className="flex items-center gap-2">
+                  {statusInfo.icon}
+                  <div>
+                    <p className={`font-semibold ${statusInfo.color}`}>
+                      {statusInfo.status}
+                    </p>
+                    {subscriptionActive && (
+                      <p className="text-sm opacity-75">
+                        Premium features are active
+                      </p>
+                    )}
+                    {trialActive && (
+                      <p className="text-sm opacity-75">
+                        {daysRemaining <= 3
+                          ? "Upgrade soon to continue premium access"
+                          : "Enjoying your trial? Upgrade anytime!"}
+                      </p>
+                    )}
+                    {billingInfo?.subscriptionId &&
+                      !subscriptionActive &&
+                      !trialActive && (
+                        <p className="text-sm opacity-75">
+                          Subscription created - waiting for activation
+                        </p>
+                      )}
+                  </div>
+                </div>
+              </div>
+
+              {subscriptionActive && (
                 <div className="mt-4">
                   <button
                     onClick={cancelSubscription}
@@ -511,38 +675,42 @@ export default function CommunityBillingInfo() {
                     className="btn btn-outline btn-error w-full"
                   >
                     <X className="w-4 h-4" />
-                    {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
+                    {cancellingSubscription
+                      ? "Cancelling..."
+                      : "Cancel Subscription"}
                   </button>
                   <p className="text-xs text-gray-500 mt-2 text-center">
-                    No refunds after payment completion. Access continues until end of billing period.
+                    No refunds after payment completion. Access continues until
+                    end of billing period.
                   </p>
                 </div>
               )}
 
-              {subscriptionActive && billingInfo?.subscriptionStatus === "cancelled" && (
-                <div className="mt-4 alert alert-warning">
-                  <AlertCircle className="w-5 h-5" />
-                  <span>Subscription cancelled. Access until {formatDate(billingInfo?.subscriptionEndDate)}</span>
-                </div>
-              )}
+              {subscriptionActive &&
+                billingInfo?.subscriptionStatus === "cancelled" && (
+                  <div className="mt-4 alert alert-warning">
+                    <AlertCircle className="w-5 h-5" />
+                    <span>
+                      Subscription cancelled. Access until{" "}
+                      {formatDate(billingInfo?.subscriptionEndDate)}
+                    </span>
+                  </div>
+                )}
 
-              {trialActive && !subscriptionActive && (
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Trial Ends:</span>
-                  <span>{formatDate(billingInfo?.adminTrialInfo?.endDate)}</span>
-                </div>
-              )}
-              
-              {(billingInfo?.paymentStatus === "unpaid" || billingInfo?.paymentStatus === "expired" || billingInfo?.paymentStatus === "trial") && (
-                <div className="mt-4">
-                  <Link 
-                    href={`/billing/${slug}`}
-                    className="btn btn-primary btn-block"
-                  >
-                    Upgrade Now
-                  </Link>
-                </div>
-              )}
+              {(billingInfo?.paymentStatus === "unpaid" ||
+                billingInfo?.paymentStatus === "expired" ||
+                billingInfo?.paymentStatus === "trial") &&
+                !subscriptionActive &&
+                !trialActive && (
+                  <div className="mt-4">
+                    <Link
+                      href={`/billing/${slug}`}
+                      className="btn btn-primary btn-block"
+                    >
+                      Upgrade Now
+                    </Link>
+                  </div>
+                )}
             </div>
           </div>
         </div>
@@ -561,14 +729,21 @@ export default function CommunityBillingInfo() {
               <div className="bg-base-100 p-6 rounded-lg">
                 <h4 className="text-lg font-bold mb-4 text-primary">Pay Now</h4>
                 <p className="mb-4 text-sm">
-                  Skip the trial and start your subscription immediately. You'll be charged {availablePlan ? `$${availablePlan.amount}/${availablePlan.interval}` : '$29/month'}
-                  starting today. Payment will be processed in {availablePlan?.currency || 'INR'} equivalent.
+                  Skip the trial and start your subscription immediately. You'll
+                  be charged{" "}
+                  {availablePlan
+                    ? `$${availablePlan.amount}/${availablePlan.interval}`
+                    : "$29/month"}
+                  starting today. Payment will be processed in{" "}
+                  {availablePlan?.currency || "INR"} equivalent.
                 </p>
 
                 <ul className="mb-6 space-y-2">
                   <li className="flex items-center">
                     <CheckCircle className="w-4 h-4 text-success mr-2" />
-                    <span className="text-sm">Full access to all premium features</span>
+                    <span className="text-sm">
+                      Full access to all premium features
+                    </span>
                   </li>
                   <li className="flex items-center">
                     <CheckCircle className="w-4 h-4 text-success mr-2" />
@@ -610,9 +785,12 @@ export default function CommunityBillingInfo() {
 
               {!trialActive && (
                 <div className="bg-base-100 p-6 rounded-lg">
-                  <h4 className="text-lg font-bold mb-4 text-primary">Or Start Free Trial</h4>
+                  <h4 className="text-lg font-bold mb-4 text-primary">
+                    Or Start Free Trial
+                  </h4>
                   <p className="mb-4 text-sm">
-                    Try all premium features for 14 days without any charge. This trial is exclusive to you as the community admin.
+                    Try all premium features for 14 days without any charge.
+                    This trial is exclusive to you as the community admin.
                   </p>
 
                   <button
@@ -639,7 +817,7 @@ export default function CommunityBillingInfo() {
       <div className="card bg-base-200 shadow-md">
         <div className="card-body">
           <h3 className="card-title">Billing History</h3>
-          
+
           <div className="overflow-x-auto">
             <table className="table table-zebra w-full">
               <thead>
@@ -662,7 +840,9 @@ export default function CommunityBillingInfo() {
                   </tr>
                 ) : (
                   <tr>
-                    <td colSpan={4} className="text-center py-4">No billing history available</td>
+                    <td colSpan={4} className="text-center py-4">
+                      No billing history available
+                    </td>
                   </tr>
                 )}
               </tbody>

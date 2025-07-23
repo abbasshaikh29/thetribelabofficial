@@ -6,7 +6,10 @@ import { CommunitySubscription } from "@/models/Subscription";
 import { CommunitySubscriptionPlan } from "@/models/PaymentPlan";
 import { User } from "@/models/User";
 import { Community } from "@/models/Community";
-import { getSafeSubscriptionDates, calculateTrialEndDate } from "@/lib/subscription-date-utils";
+import {
+  getSafeSubscriptionDates,
+  calculateTrialEndDate,
+} from "@/lib/subscription-date-utils";
 import mongoose from "mongoose";
 
 // POST /api/community-subscriptions/create - Create a new community subscription for admin
@@ -23,7 +26,7 @@ export async function POST(request: NextRequest) {
       communityId, // Optional - for existing communities upgrading
       adminId = session.user.id,
       customerNotify = true,
-      notes = {}
+      notes = {},
     } = await request.json();
 
     // Validate communityId format and find community
@@ -67,7 +70,8 @@ export async function POST(request: NextRequest) {
     // Note: We handle trial period in our application logic, not in Razorpay plan
     const standardPlan = {
       name: "Community Management Plan",
-      description: "Complete community management solution with unlimited features",
+      description:
+        "Complete community management solution with unlimited features",
       amount: 240000, // ₹2,400 in paise ($29/month)
       currency: "INR",
       interval: "monthly" as const,
@@ -79,8 +83,8 @@ export async function POST(request: NextRequest) {
         "Unlimited events",
         "Unlimited channels",
         "Basic analytics",
-        "Email support"
-      ]
+        "Email support",
+      ],
     };
 
     const plan = standardPlan;
@@ -99,7 +103,7 @@ export async function POST(request: NextRequest) {
       const existingSubscription = await CommunitySubscription.findOne({
         adminId: adminId,
         communityId: community._id,
-        status: { $in: ["active", "trial", "past_due"] }
+        status: { $in: ["active", "trial", "past_due"] },
       });
 
       if (existingSubscription) {
@@ -121,8 +125,8 @@ export async function POST(request: NextRequest) {
         notes: {
           userId: adminId,
           role: "community_admin",
-          createdAt: new Date().toISOString()
-        }
+          createdAt: new Date().toISOString(),
+        },
       };
 
       const razorpayCustomer = await createCustomer(customerData);
@@ -130,18 +134,20 @@ export async function POST(request: NextRequest) {
 
       // Update user with customer ID
       await User.findByIdAndUpdate(adminId, {
-        "communityAdminSubscription.razorpayCustomerId": customerId
+        "communityAdminSubscription.razorpayCustomerId": customerId,
       });
     }
 
     // Calculate trial end date (for our internal tracking)
-    const trialEndDate = plan.trialPeriodDays > 0
-      ? calculateTrialEndDate(plan.trialPeriodDays)
-      : undefined;
+    const trialEndDate =
+      plan.trialPeriodDays > 0
+        ? calculateTrialEndDate(plan.trialPeriodDays)
+        : undefined;
 
     // Use pre-existing plan ID from environment variables
     // This plan should be created manually in Razorpay dashboard
-    const RAZORPAY_PLAN_ID = process.env.RAZORPAY_COMMUNITY_PLAN_ID || "plan_QhCbaOaLsGCPlP";
+    const RAZORPAY_PLAN_ID =
+      process.env.RAZORPAY_COMMUNITY_PLAN_ID || "plan_QhCbaOaLsGCPlP";
 
     console.log("Using pre-existing Razorpay plan:", RAZORPAY_PLAN_ID);
 
@@ -151,7 +157,7 @@ export async function POST(request: NextRequest) {
       customer_id: customerId,
       quantity: 1,
       total_count: 120, // 120 monthly payments (10 years)
-      customer_notify: customerNotify
+      customer_notify: customerNotify,
     };
 
     console.log("Creating Razorpay subscription with data:", subscriptionData);
@@ -165,17 +171,21 @@ export async function POST(request: NextRequest) {
       current_end: razorpaySubscription.current_end,
       charge_at: razorpaySubscription.charge_at,
       start_at: razorpaySubscription.start_at,
-      end_at: razorpaySubscription.end_at
+      end_at: razorpaySubscription.end_at,
     });
 
     // Calculate dates with proper validation and fallbacks using utility function
-    const safeSubscriptionDates = getSafeSubscriptionDates(razorpaySubscription, plan);
-    const { currentStart, currentEnd, chargeAt, startAt, endAt } = safeSubscriptionDates;
+    const safeSubscriptionDates = getSafeSubscriptionDates(
+      razorpaySubscription,
+      plan
+    );
+    const { currentStart, currentEnd, chargeAt, startAt, endAt } =
+      safeSubscriptionDates;
 
     console.log("Calculated subscription dates:", {
       currentStart: currentStart.toISOString(),
       currentEnd: currentEnd.toISOString(),
-      chargeAt: chargeAt.toISOString()
+      chargeAt: chargeAt.toISOString(),
     });
 
     // Before saving subscription, ensure a valid community exists
@@ -214,7 +224,7 @@ export async function POST(request: NextRequest) {
       maxRetryAttempts: 3,
       consecutiveFailures: 0,
       webhookEvents: [],
-      notificationsSent: []
+      notificationsSent: [],
     });
 
     await subscription.save();
@@ -223,30 +233,58 @@ export async function POST(request: NextRequest) {
     await User.findByIdAndUpdate(adminId, {
       "communityAdminSubscription.razorpayCustomerId": customerId,
       "communityAdminSubscription.subscriptionId": razorpaySubscription.id,
-      "communityAdminSubscription.subscriptionStatus": razorpaySubscription.status === "created" ? "trial" : razorpaySubscription.status,
+      "communityAdminSubscription.subscriptionStatus":
+        razorpaySubscription.status === "created"
+          ? "trial"
+          : razorpaySubscription.status,
       "communityAdminSubscription.subscriptionEndDate": currentEnd,
-      "communityAdminSubscription.trialEndDate": trialEndDate
+      "communityAdminSubscription.trialEndDate": trialEndDate,
     });
 
     // If community exists, update its subscription status
     if (community) {
-      // Calculate proper subscription end date (30 days from start for monthly subscriptions)
-      const subscriptionEndDate = new Date(currentStart);
-      subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30); // 30 days from start
+      // Calculate proper end date based on subscription status
+      let subscriptionEndDate: Date;
 
-      console.log('Setting community subscription dates:', {
+      if (
+        razorpaySubscription.status === "created" &&
+        plan.trialPeriodDays > 0
+      ) {
+        // For trial subscriptions, use the trial period (14 days)
+        subscriptionEndDate = new Date(currentStart);
+        subscriptionEndDate.setDate(
+          subscriptionEndDate.getDate() + plan.trialPeriodDays
+        );
+      } else {
+        // For active subscriptions, use the full subscription period (30 days)
+        subscriptionEndDate = new Date(currentStart);
+        subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30);
+      }
+
+      console.log("Setting community subscription dates:", {
         subscriptionStartDate: currentStart,
         subscriptionEndDate: subscriptionEndDate,
-        trialEndDate: trialEndDate
+        trialEndDate: trialEndDate,
+        subscriptionStatus: razorpaySubscription.status,
+        trialPeriodDays: plan.trialPeriodDays,
       });
 
       await Community.findByIdAndUpdate(community._id, {
-        subscriptionStatus: razorpaySubscription.status === "created" ? "trial" : razorpaySubscription.status,
+        subscriptionStatus:
+          razorpaySubscription.status === "created"
+            ? "trial"
+            : razorpaySubscription.status,
         subscriptionId: razorpaySubscription.id,
         subscriptionStartDate: currentStart,
         subscriptionEndDate: subscriptionEndDate,
         trialEndDate,
-        paymentStatus: razorpaySubscription.status === "active" ? "paid" : "trial"
+        paymentStatus:
+          razorpaySubscription.status === "active"
+            ? "paid"
+            : plan.trialPeriodDays > 0
+              ? "trial"
+              : "unpaid",
+        freeTrialActivated: plan.trialPeriodDays > 0 ? true : false,
       });
     }
 
@@ -256,11 +294,11 @@ export async function POST(request: NextRequest) {
       razorpaySubscription,
       shortUrl: razorpaySubscription.short_url,
       trialEndDate,
-      message: plan.trialPeriodDays > 0
-        ? `${plan.trialPeriodDays}-day free trial started. Unlimited access to all community features. Payment will be charged on ${chargeAt.toLocaleDateString()}`
-        : "Subscription created successfully - unlimited community access activated"
+      message:
+        plan.trialPeriodDays > 0
+          ? `${plan.trialPeriodDays}-day free trial started. Unlimited access to all community features. Payment will be charged on ${chargeAt.toLocaleDateString()}`
+          : "Subscription created successfully - unlimited community access activated",
     });
-
   } catch (error: any) {
     console.error("Error creating community subscription:", error);
 
@@ -283,7 +321,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        details:
+          process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }
     );

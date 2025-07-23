@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const CommunityNav = dynamic(() => import('./CommunityNav'), {
+const CommunityNav = dynamic(() => import("./CommunityNav"), {
   loading: () => <div className="h-16 bg-base-200"></div>, // Simple placeholder for nav height
-  ssr: false // Optional: if CommunityNav relies heavily on client-side things like window
+  ssr: false, // Optional: if CommunityNav relies heavily on client-side things like window
 });
 import CourseList from "../course/CourseList";
 import { useParams } from "next/navigation";
@@ -55,22 +55,24 @@ function Courses() {
   return (
     <div>
       <CommunityNav />
-      <div className="mt-6">
-        {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="loading loading-spinner loading-lg"></div>
+      <div className="w-full flex justify-center items-center">
+        <div className="w-full md:w-2/3 mt-6">
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="loading loading-spinner loading-lg"></div>
+            </div>
+          ) : communityId ? (
+            <CourseList
+              communityId={communityId}
+              communitySlug={slug as string}
+              isAdmin={isAdmin}
+            />
+          ) : (
+            <div className="alert alert-error max-w-md mx-auto m-4">
+              <span>Community not found</span>
+            </div>
+          )}
         </div>
-      ) : communityId ? (
-        <CourseList
-          communityId={communityId}
-          communitySlug={slug as string}
-          isAdmin={isAdmin}
-        />
-      ) : (
-          <div className="alert alert-error max-w-md mx-auto m-4">
-            <span>Community not found</span>
-          </div>
-        )}
       </div>
     </div>
   );

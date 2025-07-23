@@ -18,7 +18,7 @@ export interface ITrialHistory {
 }
 
 // Interface for static methods
-export interface ITrialHistoryModel extends Model<ITrialHistory> {
+export interface ITrialHistoryModel extends Model<ITrialHistory, {}, {}, {}, any, any, any> {
   hasUserUsedTrial(
     userId: string,
     trialType: "user" | "community",
@@ -141,4 +141,4 @@ trialHistorySchema.statics.getActiveTrial = async function(
 };
 
 export const TrialHistory =
-  (models.TrialHistory as ITrialHistoryModel) || model<ITrialHistory, ITrialHistoryModel>("TrialHistory", trialHistorySchema);
+  models.TrialHistory || model<ITrialHistory, ITrialHistoryModel>("TrialHistory", trialHistorySchema);

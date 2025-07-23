@@ -7,6 +7,38 @@ import mongoose from "mongoose";
 import { emitToRoom } from "@/lib/socket";
 import { awardPoints } from "@/lib/gamification";
 
+// Add secure origin validation function
+function getSecureBaseUrl(request: NextRequest): string {
+  // Define allowed origins for your application
+  const ALLOWED_ORIGINS = [
+    "https://yourdomain.com", // Replace with your actual domain
+    "https://www.yourdomain.com", // Replace with your actual domain
+    "http://localhost:3000", // For development
+    "http://localhost:3001", // For development
+  ];
+
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+
+  // First try to use the origin header if it's in our allowlist
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    return origin;
+  }
+
+  // If no valid origin, construct from host header with validation
+  if (host) {
+    const protocol = host.includes("localhost") ? "http://" : "https://";
+    const fullUrl = `${protocol}${host}`;
+
+    if (ALLOWED_ORIGINS.includes(fullUrl)) {
+      return fullUrl;
+    }
+  }
+
+  // Fallback to a safe default (your production domain)
+  return "https://yourdomain.com"; // Replace with your actual domain
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession();
@@ -122,15 +154,8 @@ export async function POST(request: NextRequest) {
       if (!emitSuccess) {
         console.log("Direct socket emission failed, trying alternative method");
 
-        // Get the origin for absolute URLs
-        const origin =
-          request.headers.get("origin") || request.headers.get("host") || "";
-        const protocol = origin.startsWith("localhost")
-          ? "http://"
-          : "https://";
-        const baseUrl = origin.startsWith("http")
-          ? origin
-          : `${protocol}${origin}`;
+        // Get the secure base URL for internal API calls
+        const baseUrl = getSecureBaseUrl(request);
 
         // Try to emit using the socket API
         await fetch(`${baseUrl}/api/socket/emit`, {
@@ -158,13 +183,8 @@ export async function POST(request: NextRequest) {
 
     // Also emit to the community room for broader awareness
     try {
-      // Get the origin for absolute URLs
-      const origin =
-        request.headers.get("origin") || request.headers.get("host") || "";
-      const protocol = origin.startsWith("localhost") ? "http://" : "https://";
-      const baseUrl = origin.startsWith("http")
-        ? origin
-        : `${protocol}${origin}`;
+      // Get the secure base URL for internal API calls
+      const baseUrl = getSecureBaseUrl(request);
 
       // Prepare the event data
       const communityEventData = {

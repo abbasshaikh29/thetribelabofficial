@@ -1,22 +1,70 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import SettingsModal from "./SettingsModal";
-import UserCommunitySettings from "@/components/communitycommponets/UserCommunitySettings";
-import CommunitySettingsForm from "@/components/communitycommponets/CommunitySettingsForm";
-import CommunityAboutMediaManager from "@/components/communitycommponets/CommunityAboutMediaManager";
-import CommunityAccessSettings from "@/components/communitycommponets/CommunityAccessSettings";
-import CommunityPlanInfo from "@/components/communitycommponets/CommunityPlanInfo";
-import CommunityPaymentGatewaySettings from "@/components/communitycommponets/CommunityPaymentGatewaySettings";
-import RazorpayConnectForm from "@/components/payments/RazorpayConnectForm";
+import {
+  CommunityBillingProvider,
+  useCommunityBilling,
+} from "@/contexts/CommunityBillingContext";
+import {
+  CommunityDataProvider,
+  useCommunityData,
+} from "@/contexts/CommunityDataContext";
+import PlanInfoCard from "@/components/billing/PlanInfoCard";
+import NoSSR from "@/components/common/NoSSR";
 
-import AnalyticsDashboard from "@/components/communitycommponets/AnalyticsDashboard";
-import AdminPanelSettings from "@/components/communitycommponets/AdminPanelSettings";
-import LevelManagement from "@/components/gamification/LevelManagement";
-import { CommunityBillingProvider } from "@/contexts/CommunityBillingContext";
-import { DetailedPlanInfoCard } from "@/components/billing/PlanInfoCard";
+// Lazy load heavy components for better performance
+const UserCommunitySettings = lazy(
+  () => import("@/components/communitycommponets/UserCommunitySettings")
+);
+const CommunitySettingsForm = lazy(
+  () => import("@/components/communitycommponets/CommunitySettingsForm")
+);
+const CommunityAboutMediaManager = lazy(
+  () => import("@/components/communitycommponets/CommunityAboutMediaManager")
+);
+const CommunityAccessSettings = lazy(
+  () => import("@/components/communitycommponets/CommunityAccessSettings")
+);
+const AnalyticsDashboard = lazy(
+  () => import("@/components/communitycommponets/AnalyticsDashboard")
+);
+const CommunityPlanInfo = lazy(
+  () => import("@/components/communitycommponets/CommunityPlanInfo")
+);
+const CommunityPaymentGatewaySettings = lazy(
+  () =>
+    import("@/components/communitycommponets/CommunityPaymentGatewaySettings")
+);
+const RazorpayConnectForm = lazy(
+  () => import("@/components/payments/RazorpayConnectForm")
+);
+const SimplePaymentButton = lazy(
+  () => import("@/components/payments/SimplePaymentButton")
+);
+
+const AdminPanelSettings = lazy(
+  () => import("@/components/communitycommponets/AdminPanelSettings")
+);
+const LevelManagement = lazy(
+  () => import("@/components/gamification/LevelManagement")
+);
+
+// Loading component for lazy-loaded components
+const ComponentLoader = () => (
+  <div className="flex justify-center items-center min-h-[300px]">
+    <span className="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+);
+
+// Define interface for tab items
+interface TabItem {
+  key: string;
+  label: string;
+  condition: boolean;
+}
 
 interface CommunitySettingsModalProps {
   isOpen: boolean;
@@ -25,107 +73,279 @@ interface CommunitySettingsModalProps {
   slug?: string;
 }
 
-export default function CommunitySettingsModal({
-  isOpen,
-  onClose,
-  initialTab = "UserSettings",
-  slug: propSlug,
-}: CommunitySettingsModalProps) {
-  const { slug: paramSlug } = useParams<{ slug: string }>();
-  const slug = propSlug || paramSlug;
-  const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSubAdmin, setIsSubAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [editingGateway, setEditingGateway] = useState<"stripe" | "razorpay" | null>(null);
+// Billing Tab Content Component
+function BillingTabContent() {
+  const {
+    billingData,
+    loading,
+    trialActive,
+    subscriptionActive,
+    daysRemaining,
+    slug,
+  } = useCommunityBilling();
 
-  // Check if user is admin or sub-admin
-  useEffect(() => {
-    const checkUserRole = async () => {
-      if (session?.user && slug) {
-        try {
-          setLoading(true);
-          const res = await fetch(`/api/community/${slug}`);
-          if (!res.ok) {
-            throw new Error("Failed to fetch community data");
-          }
-          const data = await res.json();
-
-          const userId = session.user.id;
-          setIsAdmin(data.admin === userId);
-          setIsSubAdmin(data.subAdmins?.includes(userId) || false);
-
-          setLoading(false);
-        } catch (error) {
-          console.error("Error checking user role:", error);
-          setLoading(false);
-        }
-      }
-    };
-
-    if (session?.user && isOpen) {
-      checkUserRole();
+  const handleUpgrade = () => {
+    // Navigate to the dedicated billing page where users can:
+    // 1. Start a free trial (if eligible)
+    // 2. Complete payment for immediate upgrade
+    // 3. View detailed billing information and options
+    // 4. Handle different subscription states (trial, expired, etc.)
+    if (slug) {
+      window.location.href = `/billing/${slug}`;
+    } else {
+      console.error("No slug available for billing navigation");
     }
-  }, [session, slug, isOpen]);
+  };
 
-  // Reset to default tab when modal opens
-  React.useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialTab);
-      setEditingGateway(null); // Reset editing state when modal opens/changes
-    }
-  }, [isOpen, initialTab]);
+  if (loading && !billingData) {
+    return <ComponentLoader />;
+  }
 
-  const renderTabContent = () => {
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center min-h-[300px]">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
+  return (
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg md:text-xl font-bold">
+            Billing & Subscription
+          </h3>
+          <p className="text-xs md:text-sm text-gray-600 mt-1">
+            Manage your community subscription and payment details
+          </p>
         </div>
-      );
-    }
+      </div>
+      <PlanInfoCard
+        community={{
+          _id: billingData?._id || "",
+          name: "Default Community",
+          slug: slug || "",
+          description: "",
+          paymentStatus: billingData?.paymentStatus,
+          freeTrialActivated: billingData?.freeTrialActivated,
+          subscriptionEndDate: billingData?.subscriptionEndDate,
+          subscriptionId: billingData?.subscriptionId,
+          subscriptionStatus: billingData?.subscriptionStatus,
+        }}
+        trialActive={trialActive}
+        isPaymentActive={subscriptionActive}
+        remainingDays={daysRemaining}
+        onUpgrade={handleUpgrade}
+      />
+      {!subscriptionActive && billingData?._id && (
+        <div className="pt-2">
+          <Suspense fallback={<ComponentLoader />}>
+            <SimplePaymentButton
+              communityId={billingData._id}
+              communitySlug={slug || undefined}
+              buttonText="Pay Now ($29/month)"
+              className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] text-white font-semibold py-3 rounded-lg flex items-center justify-center"
+              onSuccess={() => window.location.reload()}
+            />
+          </Suspense>
+        </div>
+      )}
+    </div>
+  );
+}
 
+// Tab Navigation Component
+function TabNavigation({
+  visibleTabs,
+  activeTab,
+  setActiveTab,
+  showMobileNav,
+  setShowMobileNav,
+}: {
+  visibleTabs: TabItem[];
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  showMobileNav: boolean;
+  setShowMobileNav: (show: boolean) => void;
+}) {
+  return (
+    <>
+      {/* Mobile Navigation Toggle */}
+      <div className="lg:hidden border-b border-base-300 p-3">
+        <button
+          onClick={() => setShowMobileNav(!showMobileNav)}
+          className="flex items-center gap-2 py-2 px-3 bg-base-200 rounded-lg text-sm font-medium hover:bg-base-300 transition-colors"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+          <span>Menu</span>
+        </button>
+      </div>
+
+      {/* Mobile Navigation Sidebar */}
+      {showMobileNav && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setShowMobileNav(false)}
+          />
+          <div className="lg:hidden fixed left-0 top-0 h-full w-64 bg-base-100 shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between p-4 border-b border-base-300">
+                <h3 className="font-semibold text-lg">Settings Menu</h3>
+                <button
+                  onClick={() => setShowMobileNav(false)}
+                  className="btn btn-ghost btn-sm btn-circle"
+                  aria-label="Close menu"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 p-4 space-y-1">
+                {visibleTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => {
+                      setActiveTab(tab.key);
+                      setShowMobileNav(false);
+                    }}
+                    className={`w-full text-left py-3 px-4 text-sm font-medium transition-colors duration-200 rounded-lg ${
+                      activeTab === tab.key
+                        ? "bg-primary text-primary-content shadow-sm"
+                        : "hover:bg-base-200"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Desktop Sidebar Navigation */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col border-r border-base-300 bg-base-50">
+        <div className="p-4 space-y-1 flex-1">
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`w-full text-left py-3 px-4 text-sm font-medium transition-colors duration-200 rounded-lg ${
+                activeTab === tab.key
+                  ? "bg-primary text-primary-content shadow-sm"
+                  : "hover:bg-base-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Tab Content Renderer Component
+function TabContentRenderer({
+  activeTab,
+  isAdmin,
+  isSubAdmin,
+  editingGateway,
+  setEditingGateway,
+  slug,
+}: {
+  activeTab: string;
+  isAdmin: boolean;
+  isSubAdmin: boolean;
+  editingGateway: "stripe" | "razorpay" | null;
+  setEditingGateway: (gateway: "stripe" | "razorpay" | null) => void;
+  slug: string;
+}) {
+  const renderContent = () => {
     switch (activeTab) {
       case "CommunitySettings":
-        return (isAdmin || isSubAdmin) ? <CommunitySettingsForm /> : null;
+        return isAdmin || isSubAdmin ? (
+          <Suspense fallback={<ComponentLoader />}>
+            <CommunitySettingsForm />
+          </Suspense>
+        ) : null;
+
       case "AboutMedia":
-        return (isAdmin || isSubAdmin) ? (
-          <div className="space-y-6">
-            <h3 className="text-xl font-bold">About Page Media</h3>
-            <p className="text-sm text-gray-600">
-              Manage images and videos that appear on your community's about page.
+        return isAdmin || isSubAdmin ? (
+          <div className="space-y-4 md:space-y-6">
+            <h3 className="text-lg md:text-xl font-bold">About Page Media</h3>
+            <p className="text-xs md:text-sm text-gray-600">
+              Manage images and videos that appear on your community's about
+              page.
             </p>
-            <CommunityAboutMediaManager />
+            <Suspense fallback={<ComponentLoader />}>
+              <CommunityAboutMediaManager />
+            </Suspense>
           </div>
         ) : null;
+
       case "Analytics":
-        return (isAdmin || isSubAdmin) ? <AnalyticsDashboard /> : null;
+        return isAdmin || isSubAdmin ? (
+          <Suspense fallback={<ComponentLoader />}>
+            <AnalyticsDashboard />
+          </Suspense>
+        ) : null;
+
       case "LevelManagement":
-        return (isAdmin || isSubAdmin) ? (
-          <div className="space-y-6">
-            <h3 className="text-xl font-bold">Level Management</h3>
-            <p className="text-sm text-gray-600">
+        return isAdmin || isSubAdmin ? (
+          <div className="space-y-4 md:space-y-6">
+            <h3 className="text-lg md:text-xl font-bold">Level Management</h3>
+            <p className="text-xs md:text-sm text-gray-600">
               Customize level names for your community's gamification system.
             </p>
-            <LevelManagement communityId={slug || ""} />
+            <Suspense fallback={<ComponentLoader />}>
+              <LevelManagement communityId={slug || ""} />
+            </Suspense>
           </div>
         ) : null;
+
       case "AccessSettings":
-        return isAdmin ? <CommunityAccessSettings /> : null;
+        return isAdmin ? (
+          <Suspense fallback={<ComponentLoader />}>
+            <CommunityAccessSettings />
+          </Suspense>
+        ) : null;
+
       case "PlanInfo":
-        return isAdmin ? <CommunityPlanInfo /> : null;
+        return isAdmin ? (
+          <Suspense fallback={<ComponentLoader />}>
+            <CommunityPlanInfo />
+          </Suspense>
+        ) : null;
+
       case "PaymentGateway":
         return isAdmin ? (
-          <div className="space-y-8">
-            {/* Show plugin list. onEdit will set the state to show the form */}
+          <div className="space-y-6 md:space-y-8">
             {!editingGateway && (
-              <CommunityPaymentGatewaySettings
-                onEditGateway={(name) => setEditingGateway(name)}
-              />
+              <Suspense fallback={<ComponentLoader />}>
+                <CommunityPaymentGatewaySettings
+                  onEditGateway={(name) => setEditingGateway(name)}
+                />
+              </Suspense>
             )}
 
-            {/* Show the correct form based on which gateway is being edited */}
             {editingGateway === "razorpay" && (
               <div>
                 <button
@@ -134,11 +354,12 @@ export default function CommunitySettingsModal({
                 >
                   &larr; Back to gateways
                 </button>
-                <RazorpayConnectForm />
+                <Suspense fallback={<ComponentLoader />}>
+                  <RazorpayConnectForm />
+                </Suspense>
               </div>
             )}
 
-            {/* Placeholder for Stripe form */}
             {editingGateway === "stripe" && (
               <div>
                 <button
@@ -147,9 +368,11 @@ export default function CommunitySettingsModal({
                 >
                   &larr; Back to gateways
                 </button>
-                <div className="border rounded-lg p-8 text-center">
-                  <h3 className="text-xl font-bold">Stripe Connect</h3>
-                  <p className="mt-2 text-gray-500">
+                <div className="border rounded-lg p-6 md:p-8 text-center">
+                  <h3 className="text-lg md:text-xl font-bold">
+                    Stripe Connect
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-500">
                     Stripe connection form will be here.
                   </p>
                 </div>
@@ -157,153 +380,152 @@ export default function CommunitySettingsModal({
             )}
           </div>
         ) : null;
+
       case "Billing":
-        return isAdmin ? (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold">Billing & Subscription</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Manage your community subscription and payment details
-                </p>
-              </div>
-            </div>
-            <DetailedPlanInfoCard
-              communityId={slug}
-              communitySlug={slug}
-              onPaymentSuccess={(subscription) => {
-                console.log('Payment successful in settings modal:', subscription);
-                // Could add a success toast here
-              }}
-              onPaymentError={(error) => {
-                console.error('Payment error in settings modal:', error);
-                // Could add an error toast here
-              }}
-            />
-          </div>
-        ) : null;
+        return isAdmin ? <BillingTabContent /> : null;
 
       case "AdminPanel":
-        return isAdmin ? <AdminPanelSettings /> : null;
+        return isAdmin ? (
+          <Suspense fallback={<ComponentLoader />}>
+            <AdminPanelSettings />
+          </Suspense>
+        ) : null;
+
       case "UserSettings":
       default:
-        return <UserCommunitySettings />;
+        return (
+          <Suspense fallback={<ComponentLoader />}>
+            <UserCommunitySettings />
+          </Suspense>
+        );
     }
   };
 
+  return <div className="h-full">{renderContent()}</div>;
+}
+
+// Internal component that uses the context
+function CommunitySettingsContent({
+  initialTab = "UserSettings",
+  onClose,
+}: {
+  initialTab?: string;
+  onClose: () => void;
+}) {
+  const { isAdmin, isSubAdmin, loading } = useCommunityData();
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [editingGateway, setEditingGateway] = useState<
+    "stripe" | "razorpay" | null
+  >(null);
+  const [showMobileNav, setShowMobileNav] = useState(false);
+  const { slug: paramSlug } = useParams<{ slug: string }>();
+
+  // Reset state when modal opens
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setEditingGateway(null);
+    setShowMobileNav(false);
+  }, [initialTab]);
+
+  const tabItems = [
+    { key: "UserSettings", label: "Your Settings", condition: true },
+    {
+      key: "CommunitySettings",
+      label: "Community Settings",
+      condition: isAdmin || isSubAdmin,
+    },
+    {
+      key: "AboutMedia",
+      label: "About Media",
+      condition: isAdmin || isSubAdmin,
+    },
+    {
+      key: "Analytics",
+      label: "Analytics",
+      condition: isAdmin || isSubAdmin,
+    },
+    {
+      key: "LevelManagement",
+      label: "Level Management",
+      condition: isAdmin || isSubAdmin,
+    },
+    { key: "AccessSettings", label: "Access & Pricing", condition: isAdmin },
+    { key: "PlanInfo", label: "Plan Info", condition: isAdmin },
+    { key: "PaymentGateway", label: "Payments", condition: isAdmin },
+    { key: "Billing", label: "Billing", condition: isAdmin },
+    { key: "AdminPanel", label: "Admin Panel", condition: isAdmin },
+  ];
+
+  const visibleTabs = tabItems.filter((tab) => tab.condition);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[300px]">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
+
   return (
-    <CommunityBillingProvider>
-      <SettingsModal
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Community Settings"
-        maxWidth="max-w-6xl"
-      >
-        <div className="flex flex-col lg:flex-row h-full">
-        {/* Sidebar Navigation */}
-        <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-base-300 p-4 lg:p-6">
-          <div className="flex flex-row lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 overflow-x-auto lg:overflow-x-visible">
-            {/* User Settings Link - Always visible */}
-            <button
-              onClick={() => setActiveTab("UserSettings")}
-              className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                activeTab === "UserSettings" ? "bg-primary text-primary-content" : ""
-              }`}
-            >
-              Your Settings
-            </button>
+    <div className="flex flex-col lg:flex-row h-full min-h-0 relative">
+      <TabNavigation
+        visibleTabs={visibleTabs}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        showMobileNav={showMobileNav}
+        setShowMobileNav={setShowMobileNav}
+      />
 
-            {/* Admin/SubAdmin only links */}
-            {(isAdmin || isSubAdmin) && (
-              <>
-                <button
-                  onClick={() => setActiveTab("CommunitySettings")}
-                  className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                    activeTab === "CommunitySettings" ? "bg-primary text-primary-content" : ""
-                  }`}
-                >
-                  Community Settings
-                </button>
-                <button
-                  onClick={() => setActiveTab("AboutMedia")}
-                  className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                    activeTab === "AboutMedia" ? "bg-primary text-primary-content" : ""
-                  }`}
-                >
-                  About Media
-                </button>
-                <button
-                  onClick={() => setActiveTab("Analytics")}
-                  className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                    activeTab === "Analytics" ? "bg-primary text-primary-content" : ""
-                  }`}
-                >
-                  Analytics
-                </button>
-                <button
-                  onClick={() => setActiveTab("LevelManagement")}
-                  className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                    activeTab === "LevelManagement" ? "bg-primary text-primary-content" : ""
-                  }`}
-                >
-                  Level Management
-                </button>
-                {isAdmin && (
-                  <>
-                    <button
-                      onClick={() => setActiveTab("AccessSettings")}
-                      className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                        activeTab === "AccessSettings" ? "bg-primary text-primary-content" : ""
-                      }`}
-                    >
-                      Access & Pricing
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("PlanInfo")}
-                      className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                        activeTab === "PlanInfo" ? "bg-primary text-primary-content" : ""
-                      }`}
-                    >
-                      Plan Info
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("PaymentGateway")}
-                      className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                        activeTab === "PaymentGateway" ? "bg-primary text-primary-content" : ""
-                      }`}
-                    >
-                      Payments
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("Billing")}
-                      className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                        activeTab === "Billing" ? "bg-primary text-primary-content" : ""
-                      }`}
-                    >
-                      Billing
-                    </button>
-
-                    <button
-                      onClick={() => setActiveTab("AdminPanel")}
-                      className={`py-2 lg:py-3 px-3 lg:px-4 w-full lg:w-auto flex-shrink-0 text-left font-semibold text-xs lg:text-sm transition-colors duration-200 rounded-lg hover:bg-base-200 ${
-                        activeTab === "AdminPanel" ? "bg-primary text-primary-content" : ""
-                      }`}
-                    >
-                      Admin Panel
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 p-4 md:p-6 overflow-y-auto modal-custom-scroll">
+            <TabContentRenderer
+              activeTab={activeTab}
+              isAdmin={isAdmin}
+              isSubAdmin={isSubAdmin}
+              editingGateway={editingGateway}
+              setEditingGateway={setEditingGateway}
+              slug={paramSlug || ""}
+            />
           </div>
         </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-4 lg:p-6 overflow-auto max-h-[70vh] min-h-[300px]">
-          {renderTabContent()}
-        </div>
       </div>
-    </SettingsModal>
-    </CommunityBillingProvider>
+    </div>
+  );
+}
+
+// Main component with providers
+export default function CommunitySettingsModal({
+  isOpen,
+  onClose,
+  initialTab = "UserSettings",
+  slug: propSlug,
+}: CommunitySettingsModalProps) {
+  const { slug: paramSlug } = useParams<{ slug: string }>();
+  const slug = propSlug || paramSlug;
+
+  if (!slug) {
+    return null;
+  }
+
+  return (
+    <NoSSR fallback={null}>
+      <CommunityDataProvider slug={slug}>
+        <CommunityBillingProvider>
+          <SettingsModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Community Settings"
+            maxWidth="max-w-7xl"
+            maxHeight="max-h-[95vh]"
+          >
+            <CommunitySettingsContent
+              initialTab={initialTab}
+              onClose={onClose}
+            />
+          </SettingsModal>
+        </CommunityBillingProvider>
+      </CommunityDataProvider>
+    </NoSSR>
   );
 }

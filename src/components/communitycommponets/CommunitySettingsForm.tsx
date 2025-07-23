@@ -348,7 +348,7 @@ export default function CommunitySettings() {
             {bannerImage && (
               <div className="mt-2">
                 <p className="text-sm mb-1">Current banner image:</p>
-                <div className="h-32 bg-gray-200 rounded overflow-hidden">
+                <div className="h-32 bg-primary/10 rounded overflow-hidden">
                   <div
                     className="w-full h-full"
                     style={{
@@ -420,7 +420,7 @@ export default function CommunitySettings() {
               <div className="mt-2">
                 <p className="text-sm mb-1">Current icon image:</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full overflow-hidden">
                     {/* Use img tag for better debugging */}
                     {/* Add cache-busting parameter to prevent caching */}
                     <img

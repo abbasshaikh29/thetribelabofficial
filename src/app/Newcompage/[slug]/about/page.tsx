@@ -5,12 +5,15 @@ import type { ICommunity } from "@/models/Community";
 import CommunityAboutcard from "@/components/communitycommponets/CommunityAboutcard";
 import About from "@/components/communitynav/About";
 import { useSession } from "next-auth/react";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const CommunityNav = dynamic(() => import('@/components/communitynav/CommunityNav'), {
-  loading: () => <div className="h-16 bg-base-200"></div>, // Simple placeholder for nav height
-  ssr: false // Optional: if CommunityNav relies heavily on client-side things like window
-});
+const CommunityNav = dynamic(
+  () => import("@/components/communitynav/CommunityNav"),
+  {
+    loading: () => <div className="h-16 bg-base-200"></div>, // Simple placeholder for nav height
+    ssr: false, // Optional: if CommunityNav relies heavily on client-side things like window
+  }
+);
 
 async function getCommunity(slug: string): Promise<ICommunity | null> {
   try {
@@ -65,21 +68,23 @@ function Page() {
   }
 
   return (
-    <div style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div style={{ backgroundColor: "var(--bg-primary)" }}>
       <CommunityNav />
-      <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 mt-3 sm:mt-6">
-        <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-8">
-          <div className="w-full lg:w-2/3 lg:max-w-3xl">
-            <About slug={slug} />
-          </div>
-          <div className="w-full lg:w-1/4 mt-4 lg:mt-0 space-y-4">
-            <CommunityAboutcard slug={slug} />
+      <div className="w-full flex justify-center items-center">
+        <div className="w-full md:w-2/3 p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 mt-3 sm:mt-6">
+          <div className="flex flex-col lg:flex-row justify-center gap-4 lg:gap-8">
+            <div className="w-full lg:w-2/3 lg:max-w-3xl">
+              <About slug={slug} />
+            </div>
+            <div className="w-full lg:w-1/4 mt-4 lg:mt-0 space-y-4">
+              <CommunityAboutcard slug={slug} />
 
-            <div className="mt-3 sm:mt-4 justify-center flex lg:text-left">
-              <h4 className="text-sm sm:text-base  ">
-                powered by
-                <span className="text-primary ml-2">THETRIBELAB</span>
-              </h4>
+              <div className="mt-3 sm:mt-4 justify-center flex lg:text-left">
+                <h4 className="text-sm sm:text-base  ">
+                  powered by
+                  <span className="text-primary ml-2">THETRIBELAB</span>
+                </h4>
+              </div>
             </div>
           </div>
         </div>

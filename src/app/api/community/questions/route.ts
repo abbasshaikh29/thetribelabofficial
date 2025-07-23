@@ -24,10 +24,10 @@ export async function GET(req: Request) {
 
     if (mongoose.Types.ObjectId.isValid(communityId)) {
       // If it's already a valid ObjectId, use it directly
-      community = await Community.findById(communityId);
+      community = await (Community as any).findById(communityId);
     } else {
       // If it's a slug, resolve it to community
-      community = await Community.findOne({ slug: communityId });
+      community = await (Community as any).findOne({ slug: communityId });
     }
 
     if (!community) {

@@ -636,7 +636,14 @@ function CommunityNav() {
                 </div>
                 <ul
                   tabIndex={0}
-                  className="dropdown-content z-[1] shadow-lg bg-base-100 rounded-box w-64 mt-4 py-2"
+                  className="dropdown-content z-[1] shadow-lg rounded-box w-64 mt-4 py-2"
+                  style={{ 
+                    backgroundColor: "var(--dropdown-bg)", 
+                    borderColor: "var(--border-color)",
+                    opacity: "1",
+                    backdropFilter: "none",
+                    border: "1px solid var(--border-color)"
+                  }}
                 >
                   {session ? (
                     <>

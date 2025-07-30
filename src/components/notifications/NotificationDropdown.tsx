@@ -119,7 +119,16 @@ export default function NotificationDropdown({
   };
 
   return (
-    <div className="dropdown-content z-[1] shadow-lg bg-base-100 rounded-box w-80 sm:w-96 mt-4 overflow-hidden absolute right-0">
+    <div 
+      className="dropdown-content z-[1] shadow-lg rounded-box w-80 sm:w-96 mt-4 overflow-hidden absolute right-0" 
+      style={{ 
+        backgroundColor: "var(--dropdown-bg)", 
+        borderColor: "var(--border-color)",
+        opacity: "1",
+        backdropFilter: "none",
+        border: "1px solid var(--border-color)"
+      }}
+    >
       <div className="flex flex-col">
         <div className="p-3 border-b border-base-300 flex justify-between items-center">
           <h3 className="font-semibold">Notifications</h3>

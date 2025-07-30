@@ -5,7 +5,7 @@ import { useNotification } from "./Notification";
 import { useSettingsModal } from "./modals/SettingsModalProvider";
 import Link from "next/link";
 import Image from "next/image";
-import { User, ChevronDown, Compass, Plus } from "lucide-react";
+import { User, Menu, ChevronDown, Compass, Plus } from "lucide-react";
 
 import CommunityIcon from "./communitynav/CommunityIcon";
 import { usePathname } from "next/navigation";
@@ -13,6 +13,7 @@ import MessageIcon from "./messages/MessageIcon";
 import NotificationIcon from "./notifications/NotificationIcon";
 import ThemeSwitcher from "./ThemeSwitcher";
 import ProfileAvatar from "./ProfileAvatar";
+import CommunitiesSideDrawer from "./CommunitiesSideDrawer";
 
 interface Community {
   _id: string;
@@ -31,6 +32,7 @@ export default function Header() {
   const [currentCommunity, setCurrentCommunity] = useState<Community | null>(
     null
   );
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const pathname = usePathname();
 
   // No debug logging in production
@@ -87,16 +89,40 @@ export default function Header() {
     const fetchUserCommunities = async () => {
       if (session?.user) {
         try {
-          const response = await fetch("/api/user/communities");
+          console.log("Header: Fetching user communities");
+          
+          // Add timeout for user communities fetch
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+          const response = await fetch("/api/user/communities", {
+            signal: controller.signal,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          clearTimeout(timeoutId);
+
           if (response.ok) {
             const data = await response.json();
+            console.log("Header: Successfully fetched user communities:", {
+              length: data.length,
+              communities: data
+            });
             setUserCommunities(data);
 
             // Preload all community icons
             preloadCommunityIcons(data);
+          } else {
+            throw new Error(`Failed to fetch communities: ${response.status}`);
           }
         } catch (error) {
-          // Error handling silently
+          if (error instanceof Error && error.name === "AbortError") {
+            console.warn("Header: User communities fetch timed out");
+          } else {
+            console.error("Header: Error fetching user communities:", error);
+          }
         }
       }
     };
@@ -113,8 +139,9 @@ export default function Header() {
     }
   };
   return (
+    <>
     <div
-      className="navbar sticky top-0 z-40 border-b transition-all duration-300"
+      className="navbar sticky top-0 z-40 border-b transition-all duration-300 w-full max-w-full overflow-visible"
       style={{
         backgroundColor: "rgba(0, 0, 0, 0.2)",
         backdropFilter: "blur(20px)",
@@ -124,33 +151,57 @@ export default function Header() {
         borderRadius: "0 0 16px 16px"
       }}
     >
-      <div className="container mx-auto flex items-center justify-between">
-        <div className="flex-1 lg:flex-none flex items-center gap-2">
+      <div className="w-full max-w-full mx-auto px-2 sm:px-4 flex items-center justify-between">
+        <div className="flex-1 lg:flex-none flex items-center gap-1 sm:gap-2 min-w-0">
           <Link
             href="/"
-            className="btn btn-ghost text-xl normal-case font-bold relative group transition-colors duration-200"
+            className="btn btn-ghost text-sm sm:text-lg md:text-xl normal-case font-bold relative group transition-colors duration-200 min-w-0 px-2 sm:px-4"
             prefetch={true}
             style={{ color: "var(--text-primary)" }}
             onClick={() =>
               showNotification("Welcome to TheTribelab", "success")
             }
           >
-            <span className="relative z-10">TheTribelab</span>
+            <span className="relative z-10 truncate">TheTribelab</span>
             <span
               className="absolute bottom-0 left-0 w-0 h-0.5 transition-all duration-300 group-hover:w-full"
               style={{ backgroundColor: "var(--brand-primary)" }}
             ></span>
           </Link>
 
-          {/* Communities Dropdown */}
+          {/* Communities - Mobile Button (shows drawer) */}
           {session && (
-            <div className="dropdown dropdown-bottom">
-              <div
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className="btn btn-ghost btn-sm normal-case flex items-center gap-1 rounded-lg transition-colors duration-200 min-w-0 px-1 sm:px-2 md:hidden"
+              style={{
+                color: "var(--text-secondary)",
+                backgroundColor: "transparent"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--hover-bg)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+              aria-label="Open communities menu"
+              title="Communities"
+            >
+              <Menu size={16} className="sm:w-5 sm:h-5" style={{ color: "var(--brand-primary)" }} />
+            </button>
+          )}
+            
+          
+
+          {/* Communities - Desktop Dropdown */}
+          {session && (
+            <div className="dropdown dropdown-bottom hidden md:block relative">
+              <button
                 tabIndex={0}
-                role="button"
+                type="button"
                 aria-label="My communities"
                 title="My communities"
-                className="btn btn-ghost btn-sm normal-case flex items-center gap-1 rounded-lg transition-colors duration-200"
+                className="btn btn-ghost btn-sm normal-case flex items-center gap-1 rounded-lg transition-colors duration-200 min-w-0 px-1 sm:px-2"
                 style={{
                   color: "var(--text-secondary)",
                   backgroundColor: "transparent"
@@ -162,18 +213,18 @@ export default function Header() {
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}
               >
-                <ChevronDown size={20} style={{ color: "var(--brand-primary)" }} />
-              </div>
+                <ChevronDown size={16} className="sm:w-5 sm:h-5" style={{ color: "var(--brand-primary)" }} />
+              </button>
               <ul
                 tabIndex={0}
-                className="dropdown-content z-[1] text-lg menu p-2 rounded-box w-72 border transition-all duration-200"
+                className="dropdown-content z-[9999] text-sm sm:text-base menu p-2 rounded-box w-64 sm:w-72 border transition-all duration-200 max-w-[90vw]"
                 style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.8)",
-                  backdropFilter: "blur(16px)",
-                  WebkitBackdropFilter: "blur(16px)",
+                  backgroundColor: "var(--bg-primary)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
                   color: "var(--text-primary)",
-                  borderColor: "rgba(255, 255, 255, 0.15)",
-                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
+                  borderColor: "var(--border-color)",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
                 }}
               >
                 <li className="">
@@ -251,8 +302,8 @@ export default function Header() {
             </div>
           )}
         </div>
-        <div className="flex flex-1 justify-end px-2">
-          <div className="flex items-stretch gap-2">
+        <div className="flex flex-1 justify-end px-1 sm:px-2 min-w-0">
+          <div className="flex items-stretch gap-1 sm:gap-2">
             {/* Message Icon */}
             {session && <MessageIcon />}
             {/* Notification Icon */}
@@ -260,12 +311,12 @@ export default function Header() {
             {/* Theme Switcher */}
             <ThemeSwitcher />
             <div className="dropdown dropdown-end">
-              <div
+              <button
                 tabIndex={0}
-                role="button"
+                type="button"
                 aria-label="User menu"
                 title="User menu"
-                className="btn btn-ghost btn-circle avatar border-2 transition-colors duration-300"
+                className="btn btn-ghost btn-circle avatar border-2 transition-colors duration-300 min-h-[44px] min-w-[44px] h-10 w-10 sm:h-12 sm:w-12"
                 style={{
                   borderColor: "var(--border-color)"
                 }}
@@ -286,19 +337,19 @@ export default function Header() {
                 ) : (
                   <User className="w-5 h-5" style={{ color: "var(--text-secondary)" }} />
                 )}
-              </div>
+              </button>
               <ul
                 tabIndex={0}
-                className="dropdown-content z-[1] menu p-2 shadow-lg rounded-box w-64 mt-4"
+                className="dropdown-content z-[99] menu p-2 shadow-lg rounded-box w-56 sm:w-64 mt-4 max-w-[90vw]"
                 style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.8)",
-                  backdropFilter: "blur(16px)",
-                  WebkitBackdropFilter: "blur(16px)",
+                  backgroundColor: "var(--bg-primary)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
                   color: "var(--text-primary)",
-                  maxWidth: "300px",
+                  maxWidth: "90vw",
                   overflow: "hidden",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
+                  border: "1px solid var(--border-color)",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
                 }}
               >
                 {session ? (
@@ -312,7 +363,7 @@ export default function Header() {
                     <li>
                       <Link
                         href={"/profile"}
-                        className="px-4 py-2 block w-full transition-colors duration-200 rounded-lg"
+                        className="px-4 py-3 sm:py-2 w-full transition-colors duration-200 rounded-lg min-h-[44px] flex items-center"
                         style={{ color: "var(--text-primary)" }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = "var(--hover-bg)";
@@ -330,7 +381,7 @@ export default function Header() {
                     <li>
                       <Link
                         href={"/communityform"}
-                        className="px-4 py-2 block w-full transition-colors duration-200 rounded-lg"
+                        className="px-4 py-3 sm:py-2 w-full transition-colors duration-200 rounded-lg min-h-[44px] flex items-center"
                         style={{ color: "var(--text-primary)" }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = "var(--hover-bg)";
@@ -348,7 +399,7 @@ export default function Header() {
                     <li>
                       <button
                         type="button"
-                        className="px-4 py-2 block w-full transition-colors duration-200 rounded-lg text-left"
+                        className="px-4 py-3 sm:py-2 w-full transition-colors duration-200 rounded-lg text-left min-h-[44px] flex items-center"
                         style={{ color: "var(--text-primary)" }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = "var(--hover-bg)";
@@ -405,6 +456,15 @@ export default function Header() {
           </div>
         </div>
       </div>
+
     </div>
+      {/* Communities Side Drawer */}
+      <CommunitiesSideDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        userCommunities={userCommunities}
+        currentCommunity={currentCommunity}
+      />
+    </>
   );
 }

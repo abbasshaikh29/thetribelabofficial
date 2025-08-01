@@ -509,9 +509,28 @@ export const fetchSubscription = async (
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(
-        `Razorpay API error: ${errorData.error?.description || "Unknown error"}`
-      );
+
+      // Enhanced error logging for debugging
+      console.error("Razorpay API Error Details:", {
+        status: response.status,
+        statusText: response.statusText,
+        subscriptionId,
+        errorData,
+        keyId: keyId ? `${keyId.substring(0, 8)}...` : "not set",
+        keySecretLength: keySecret?.length || 0
+      });
+
+      let errorMessage = `Razorpay API error: ${errorData.error?.description || "Unknown error"}`;
+
+      // Provide specific guidance for common errors
+      if (response.status === 401) {
+        errorMessage += "\n\n🔑 Authentication failed. This indicates invalid Razorpay credentials.";
+        errorMessage += "\n📖 Please check RAZORPAY_DEBUG_GUIDE.md for troubleshooting steps.";
+      } else if (response.status === 400 && errorData.error?.description?.includes('does not exist')) {
+        errorMessage += "\n\n🔍 Subscription not found. This subscription may belong to a different Razorpay account.";
+      }
+
+      throw new Error(errorMessage);
     }
 
     return await response.json();

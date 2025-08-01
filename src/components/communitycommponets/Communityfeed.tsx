@@ -132,12 +132,12 @@ export default function Communityfeed({ communitys }: CommunityfeedProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-0">
       {communitys.map((community) => (
         <Link
           key={community._id?.toString()}
           href={community.slug ? `/Newcompage/${community.slug}/about` : "#"}
-          className="rounded-xl shadow-sm border h-[400px] overflow-hidden hover:shadow-md transition-all duration-200 block community-card"
+          className="rounded-xl shadow-sm border h-[350px] sm:h-[400px] overflow-hidden hover:shadow-md transition-all duration-200 block community-card"
           style={{
             backgroundColor: "var(--card-bg)",
             color: "var(--text-primary)",
@@ -145,15 +145,15 @@ export default function Communityfeed({ communitys }: CommunityfeedProps) {
           }}
         >
           {/* Banner */}
-          <div className="w-full h-40 bg-primary/5 relative overflow-hidden">
+          <div className="w-full h-32 sm:h-40 bg-primary/5 relative overflow-hidden">
             {renderBannerImage(community)}
           </div>
 
           {/* Community Icon and Name */}
-          <div className="p-5 flex flex-col h-[calc(400px-160px)]">
-            <div className="flex items-center gap-3 mb-3">
+          <div className="p-3 sm:p-5 flex flex-col h-[calc(350px-128px)] sm:h-[calc(400px-160px)]">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3">
               {renderIconImage(community)}
-              <h2 className="font-bold text-lg truncate">{community.name}</h2>
+              <h2 className="font-bold text-base sm:text-lg truncate">{community.name}</h2>
             </div>
 
             <p

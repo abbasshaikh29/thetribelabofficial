@@ -369,7 +369,7 @@ function CommunityNav() {
   return (
     <div
       className="sticky top-0 shadow-md z-10 w-full flex justify-center items-center"
-      style={{ backgroundColor: "var(--bg-secondary)" }}
+      style={{ backgroundColor: "var(--bg-primary)" }}
     >
       <div className="w-full md:w-2/3">
         <div className="flex flex-col w-full">
@@ -377,12 +377,12 @@ function CommunityNav() {
           <div className="flex justify-between items-center w-full pr-2 sm:pr-4 md:pr-8 py-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="flex-shrink-0 rounded-md">
+                <div className="flex overflow-hidden rounded-md">
                   <CommunityIcon
                     iconUrl={iconImage}
                     name={Name}
                     size="md"
-                    className="hover:scale-105 transition-transform duration-200"
+                    className="hover:scale-105 rounded-lg transition-transform duration-200"
                   />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
@@ -636,7 +636,14 @@ function CommunityNav() {
                 </div>
                 <ul
                   tabIndex={0}
-                  className="dropdown-content z-[1] shadow-lg bg-base-100 rounded-box w-64 mt-4 py-2"
+                  className="dropdown-content z-[1] shadow-lg rounded-box w-64 mt-4 py-2"
+                  style={{ 
+                    backgroundColor: "var(--dropdown-bg)", 
+                    borderColor: "var(--border-color)",
+                    opacity: "1",
+                    backdropFilter: "none",
+                    border: "1px solid var(--border-color)"
+                  }}
                 >
                   {session ? (
                     <>

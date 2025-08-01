@@ -84,18 +84,23 @@ export default function ThemeSwitcher() {
 
   return (
     <div className="dropdown dropdown-end">
-      <div
+      <button
         tabIndex={0}
-        role="button"
+        type="button"
         className="btn btn-ghost btn-circle transition-all duration-200 hover:bg-opacity-80"
         title={`Current theme: ${currentTheme === "system" ? `System (${resolvedTheme})` : currentTheme}`}
       >
         {getThemeIcon()}
-      </div>
+      </button>
       <ul
         tabIndex={0}
-        className="dropdown-content z-[1] menu p-2 shadow-xl bg-base-100 rounded-box w-56 mt-4 border border-base-300"
-        style={{ backgroundColor: "var(--dropdown-bg)", borderColor: "var(--border-color)" }}
+        className="dropdown-content z-[1] menu p-2 shadow-xl rounded-box w-56 mt-4 border"
+        style={{ 
+          backgroundColor: "var(--dropdown-bg)", 
+          borderColor: "var(--border-color)",
+          opacity: "1",
+          backdropFilter: "none"
+        }}
       >
         <li className="menu-title">
           <span style={{ color: "var(--text-secondary)" }}>Choose Theme</span>

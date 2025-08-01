@@ -108,8 +108,7 @@ export default function BillingPage() {
     }
   }, [slug, session?.user?.id]);
 
-  useEffect(() => {
-    const fetchCommunity = async () => {
+  const fetchCommunity = async () => {
       if (!slug) {
         setError("Community slug is required");
         setLoading(false);
@@ -180,7 +179,16 @@ export default function BillingPage() {
         // Check URL parameters for suspension status
         const urlParams = new URLSearchParams(window.location.search);
         const suspended = urlParams.get("suspended") === "true";
+        const expired = urlParams.get("expired") === "true";
         setCommunitySuspended(suspended);
+
+        // Show notification if trial expired
+        if (expired) {
+          showNotification(
+            "⏰ Your free trial has expired. Subscribe now to continue accessing your community.",
+            "warning"
+          );
+        }
 
         // Only proceed with additional checks if user is authenticated
         if (session?.user?.id) {
@@ -333,6 +341,7 @@ export default function BillingPage() {
       }
     };
 
+  useEffect(() => {
     if (slug) {
       fetchCommunity();
     }
@@ -683,10 +692,19 @@ export default function BillingPage() {
                               : "Upgrade anytime to secure your premium features beyond the trial period."}
                           </p>
                         </div>
-                        <button className="btn btn-primary btn-lg w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02]">
-                          <Crown className="w-5 h-5 mr-2" />
-                          Upgrade to Premium - $29/month
-                        </button>
+                        <SimplePaymentButton
+                          communityId={community?._id}
+                          communitySlug={slug}
+                          buttonText="👑 Upgrade to Premium - $29/month"
+                          className="btn btn-primary btn-lg w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02]"
+                          onSuccess={(subscription) => {
+                            showNotification("🎉 Subscription activated successfully!", "success");
+                            fetchCommunity();
+                          }}
+                          onError={(error) => {
+                            showNotification(`❌ Payment failed: ${error}`, "error");
+                          }}
+                        />
                       </div>
                     </div>
                   ) : community.subscriptionId &&
@@ -751,10 +769,19 @@ export default function BillingPage() {
                       </div>
 
                       <div className="mt-6">
-                        <button className="btn btn-primary btn-lg w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02]">
-                          <CreditCard className="w-5 h-5 mr-2" />
-                          Complete Payment - $29/month
-                        </button>
+                        <SimplePaymentButton
+                          communityId={community?._id}
+                          communitySlug={slug}
+                          buttonText="💳 Complete Payment - $29/month"
+                          className="btn btn-primary btn-lg w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02]"
+                          onSuccess={(subscription) => {
+                            showNotification("🎉 Payment completed successfully!", "success");
+                            fetchCommunity();
+                          }}
+                          onError={(error) => {
+                            showNotification(`❌ Payment failed: ${error}`, "error");
+                          }}
+                        />
                       </div>
                     </div>
                   ) : (

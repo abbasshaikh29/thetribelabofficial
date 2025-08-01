@@ -189,7 +189,8 @@ export default function CommunityFeedClient({
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto mb-12">
+        {/* Search and Filter Section */}
+        <div className="mb-8">
           <div className="flex gap-4 items-center">
             {/* Search Bar */}
             <div className="relative flex-1">
@@ -226,6 +227,7 @@ export default function CommunityFeedClient({
                 }}
               >
                 <Filter className="h-4 w-4" />
+                <span className="sm:hidden">Filter</span>
                 <span className="hidden sm:inline">
                   {filterType === "all"
                     ? "All"

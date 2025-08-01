@@ -482,7 +482,19 @@ export async function getCommunityStatus(communityId: string) {
         subscriptionDetails = await fetchSubscription(community.subscriptionId);
       } catch (err) {
         console.error("Error fetching subscription details:", err);
+
+        // Provide specific guidance for authentication errors
+        if (err instanceof Error && err.message.includes('Authentication failed')) {
+          console.error('🔑 Razorpay authentication failed. Please check:');
+          console.error('1. RAZORPAY_KEY_ID is correct in environment variables');
+          console.error('2. RAZORPAY_KEY_SECRET is correct in environment variables');
+          console.error('3. Credentials are from the correct Razorpay account');
+          console.error('4. Account has necessary API permissions');
+          console.error('📖 See RAZORPAY_DEBUG_GUIDE.md for detailed troubleshooting');
+        }
+
         // Don't throw, just continue without subscription details
+        subscriptionDetails = null;
       }
     }
 

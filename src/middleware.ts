@@ -8,8 +8,34 @@ import { checkCommunityAccess, createSuspendedCommunityResponse } from "./middle
 
 // This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
-  const isAuthenticated = !!token;
+  // Try to get token with proper secret
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production"
+  });
+
+  // Fallback: Check for session cookies directly if getToken fails
+  let isAuthenticated = !!token;
+
+  if (!isAuthenticated) {
+    // Check for session cookies directly
+    const sessionCookie = process.env.NODE_ENV === "production"
+      ? request.cookies.get("__Secure-next-auth.session-token")
+      : request.cookies.get("next-auth.session-token");
+
+    isAuthenticated = !!sessionCookie;
+
+    // Debug logging for production
+    if (process.env.NODE_ENV === "production") {
+      console.log("Middleware debug:", {
+        path: request.nextUrl.pathname,
+        hasToken: !!token,
+        hasSessionCookie: !!sessionCookie,
+        cookieNames: Array.from(request.cookies.getAll()).map(c => c.name)
+      });
+    }
+  }
 
   // Protected routes that require authentication
   const protectedPaths = [
@@ -28,7 +54,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     // Logged in, check role
-    if (token.role !== "platform_admin") {
+    if (!token || token.role !== "platform_admin") {
       // Not a platform admin, redirect to homepage
       return NextResponse.redirect(new URL("/", request.url));
     }
@@ -43,6 +69,16 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isProtectedPath && !isAuthenticated) {
+    // Debug logging for production
+    if (process.env.NODE_ENV === "production") {
+      console.log("Redirecting to login:", {
+        path,
+        isProtectedPath,
+        isAuthenticated,
+        hasToken: !!token
+      });
+    }
+
     // Redirect to login page if trying to access protected route without authentication
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("callbackUrl", encodeURI(request.url));

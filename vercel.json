@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "env": {
+    "NEXTAUTH_URL": "https://skoo1-omega.vercel.app",
+    "NEXTAUTH_SECRET": "a9b7c5d3e1f02468ace0987654321fedcba8901234567890abcdef12345678",
+    "GOOGLE_CLIENT_ID": "1007412145112-1noktdu3gu2r9joiv15eg053i3kt8fsv.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "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"
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}

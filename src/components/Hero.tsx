@@ -114,7 +114,7 @@ function Hero() {
           />
         </div>
       </div>
-      
+
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16 relative">
           <div className="absolute right-[-15rem] top-16">
@@ -151,7 +151,7 @@ function Hero() {
             style={{ color: "var(--text-secondary)" }}
           >
             create community with your audiance <br />and turn it into a real profitable bussiness
-            
+
           </p>
 
           {/* Buttons Section */}

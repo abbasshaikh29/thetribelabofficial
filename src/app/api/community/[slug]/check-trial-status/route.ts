@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbconnect } from "@/lib/db";
 import { Community } from "@/models/Community";
 import { ICommunity } from "@/models/Community";
+import { getCommunityStatus } from "@/lib/trial-service";
 
 // Define a type for the community document
 interface CommunityDocument extends ICommunity {
@@ -19,9 +20,13 @@ interface CommunityDocument extends ICommunity {
 }
 
 // GET /api/community/[slug]/check-trial-status - Check if a community has an active trial or payment
-export async function GET(request: NextRequest) {
-  // Get the slug from the URL
-  const slug = request.nextUrl.pathname.split('/').pop();
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  // Get the slug from the route parameters
+  const resolvedParams = await context.params;
+  const slug = resolvedParams.slug;
   try {
     if (!slug) {
       return NextResponse.json(
@@ -52,21 +57,41 @@ export async function GET(request: NextRequest) {
 
     // Check if the user is the admin
     if (community.admin.toString() !== userId) {
-      // Not the admin, so no need to check trial status
+      // Not the admin, so no need to check trial status for members
       return NextResponse.json({ hasActiveTrialOrPayment: true });
     }
 
-    // Check if the community has an active trial or payment
-    const hasActiveTrialOrPayment = 
-      (community.adminTrialInfo?.activated === true && 
-       community.adminTrialInfo?.endDate && 
-       new Date(community.adminTrialInfo.endDate) > new Date()) ||
-      community.paymentStatus === 'paid' ||
-      (community.freeTrialActivated === true && 
-       community.subscriptionEndDate && 
-       new Date(community.subscriptionEndDate) > new Date());
+    // Use the comprehensive status check for admins
+    try {
+      const comprehensiveStatus = await getCommunityStatus(community._id.toString());
 
-    return NextResponse.json({ hasActiveTrialOrPayment });
+      const hasActiveTrialOrPayment =
+        comprehensiveStatus.hasActiveSubscription ||
+        comprehensiveStatus.hasActiveTrial;
+
+      return NextResponse.json({
+        hasActiveTrialOrPayment,
+        debug: {
+          hasActiveSubscription: comprehensiveStatus.hasActiveSubscription,
+          hasActiveTrial: comprehensiveStatus.hasActiveTrial,
+          daysRemaining: comprehensiveStatus.daysRemaining
+        }
+      });
+    } catch (statusError) {
+      console.error("Error getting comprehensive status:", statusError);
+
+      // Fallback to basic check if comprehensive status fails
+      const hasActiveTrialOrPayment =
+        (community.adminTrialInfo?.activated === true &&
+         community.adminTrialInfo?.endDate &&
+         new Date(community.adminTrialInfo.endDate) > new Date()) ||
+        community.paymentStatus === 'paid' ||
+        (community.freeTrialActivated === true &&
+         community.subscriptionEndDate &&
+         new Date(community.subscriptionEndDate) > new Date());
+
+      return NextResponse.json({ hasActiveTrialOrPayment });
+    }
   } catch (error) {
     console.error("Error checking trial status:", error);
     return NextResponse.json(

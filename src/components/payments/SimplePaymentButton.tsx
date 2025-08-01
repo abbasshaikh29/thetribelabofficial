@@ -58,26 +58,39 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
   }, []);
 
   const handlePayment = async () => {
+    console.log('🔄 Payment button clicked');
+    console.log('Session:', session?.user ? 'Authenticated' : 'Not authenticated');
+    console.log('Script loaded:', isScriptLoaded);
+    console.log('Razorpay key:', process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ? 'Set' : 'Not set');
+
     if (!session?.user) {
+      console.error('❌ User not authenticated');
       setError("You must be logged in to make a payment");
       return;
     }
 
     if (!isScriptLoaded) {
+      console.error('❌ Razorpay script not loaded');
       setError("Payment gateway is not ready. Please try again.");
       return;
     }
 
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+      console.error('❌ Razorpay key not found');
       setError("Razorpay configuration error: Public key not found");
       return;
     }
 
+    console.log('✅ All checks passed, creating subscription...');
     setIsLoading(true);
     setError(null);
 
     try {
       // Create community subscription
+      console.log('📡 Making API call to create subscription...');
+      console.log('Community ID:', communityId);
+      console.log('Admin ID:', session.user.id);
+
       const response = await fetch("/api/community-subscriptions/create", {
         method: "POST",
         headers: {
@@ -95,9 +108,12 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
         }),
       });
 
+      console.log('📡 API response status:', response.status);
       const data = await response.json();
+      console.log('📡 API response data:', data);
 
       if (!response.ok) {
+        console.error('❌ API call failed:', data);
         throw new Error(data.error || "Failed to create subscription");
       }
 

@@ -9,6 +9,7 @@ import CommunityNav from "@/components/communitynav/CommunityNav";
 import { listenForRealtimeEvents } from "@/lib/realtime";
 import { useRealtime } from "@/components/RealtimeProvider";
 import { useNotification } from "@/components/Notification";
+import TrialExpiredRedirect from "@/components/trial/TrialExpiredRedirect";
 
 // Dynamically import components for code splitting
 const CommunityAboutcard = lazy(
@@ -500,6 +501,8 @@ export default function HomeIdPage() {
     <>
       <div style={{ backgroundColor: "var(--bg-primary)" }}>
         <CommunityNav />
+        {/* Redirect admins to billing page if trial expired */}
+        <TrialExpiredRedirect communitySlug={slug} />
         {isMember ? (
           <div className="w-full flex justify-center items-center">
             <div className="w-full md:w-2/3 px-4 py-8">

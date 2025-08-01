@@ -108,8 +108,7 @@ export default function BillingPage() {
     }
   }, [slug, session?.user?.id]);
 
-  useEffect(() => {
-    const fetchCommunity = async () => {
+  const fetchCommunity = async () => {
       if (!slug) {
         setError("Community slug is required");
         setLoading(false);
@@ -342,6 +341,7 @@ export default function BillingPage() {
       }
     };
 
+  useEffect(() => {
     if (slug) {
       fetchCommunity();
     }
@@ -695,18 +695,16 @@ export default function BillingPage() {
                         <SimplePaymentButton
                           communityId={community?._id}
                           communitySlug={slug}
-                          buttonText="Upgrade to Premium - $29/month"
+                          buttonText="👑 Upgrade to Premium - $29/month"
                           className="btn btn-primary btn-lg w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02]"
                           onSuccess={(subscription) => {
                             showNotification("🎉 Subscription activated successfully!", "success");
-                            fetchCommunityData();
+                            fetchCommunity();
                           }}
                           onError={(error) => {
                             showNotification(`❌ Payment failed: ${error}`, "error");
                           }}
-                        >
-                          <Crown className="w-5 h-5 mr-2" />
-                        </SimplePaymentButton>
+                        />
                       </div>
                     </div>
                   ) : community.subscriptionId &&
@@ -774,18 +772,16 @@ export default function BillingPage() {
                         <SimplePaymentButton
                           communityId={community?._id}
                           communitySlug={slug}
-                          buttonText="Complete Payment - $29/month"
+                          buttonText="💳 Complete Payment - $29/month"
                           className="btn btn-primary btn-lg w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-none shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02]"
                           onSuccess={(subscription) => {
                             showNotification("🎉 Payment completed successfully!", "success");
-                            fetchCommunityData();
+                            fetchCommunity();
                           }}
                           onError={(error) => {
                             showNotification(`❌ Payment failed: ${error}`, "error");
                           }}
-                        >
-                          <CreditCard className="w-5 h-5 mr-2" />
-                        </SimplePaymentButton>
+                        />
                       </div>
                     </div>
                   ) : (

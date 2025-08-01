@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authoptions";
+import { auth } from "@/auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,8 +10,8 @@ export async function GET(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     });
 
-    // Get session using getServerSession
-    const session = await getServerSession(authOptions);
+    // Get session using auth
+    const session = await auth();
 
     // Get cookies
     const cookies = Array.from(request.cookies.getAll()).map(cookie => ({

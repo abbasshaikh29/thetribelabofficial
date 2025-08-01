@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     // Logged in, check role
-    if (token.role !== "platform_admin") {
+    if (!token || token.role !== "platform_admin") {
       // Not a platform admin, redirect to homepage
       return NextResponse.redirect(new URL("/", request.url));
     }

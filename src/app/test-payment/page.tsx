@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import SimplePaymentButton from "@/components/payments/SimplePaymentButton";
+import Link from "next/link";
 
 /**
  * Test page to debug payment button functionality
@@ -51,12 +52,12 @@ export default function TestPaymentPage() {
           {!session?.user ? (
             <div className="text-center py-8">
               <p className="text-red-600 mb-4">❌ You must be logged in to test payments</p>
-              <a 
-                href="/api/auth/signin" 
+              <Link
+                href="/api/auth/signin"
                 className="btn btn-primary"
               >
                 Sign In
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">
@@ -126,7 +127,7 @@ export default function TestPaymentPage() {
                   }
                 } catch (error) {
                   console.error("API Error:", error);
-                  alert("❌ Network error: " + error.message);
+                  alert("❌ Network error: " + (error instanceof Error ? error.message : String(error)));
                 }
               }}
               className="btn btn-secondary"
@@ -140,12 +141,12 @@ export default function TestPaymentPage() {
 
         {/* Back to Billing */}
         <div className="mt-8 text-center">
-          <a 
-            href="/billing/iran-won" 
+          <Link
+            href="/billing/iran-won"
             className="btn btn-outline"
           >
             ← Back to Billing Page
-          </a>
+          </Link>
         </div>
       </div>
     </div>

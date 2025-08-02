@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import PaymentLoadingIndicator from "./PaymentLoadingIndicator";
 
 // Unified interface for community subscription checkout
 interface CommunitySubscriptionCheckoutProps {
@@ -108,37 +109,13 @@ const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps
 
       const { subscription, razorpaySubscription, shortUrl } = data;
 
-      // If subscription requires authentication, open Razorpay checkout
+      // If subscription requires authentication, use hosted checkout
       if (razorpaySubscription.status === "created" && shortUrl) {
-        const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          subscription_id: razorpaySubscription.id,
-          name: "TheTribeLab",
-          description: "Community Management Plan - $29/month",
-          handler: async function (response: any) {
-            await verifySubscriptionPayment(
-              response.razorpay_subscription_id,
-              response.razorpay_payment_id,
-              response.razorpay_signature
-            );
-          },
-          prefill: {
-            name: session.user.name || "",
-            email: session.user.email || "",
-          },
-          theme: {
-            color: "#F37021",
-          },
-          modal: {
-            ondismiss: function() {
-              console.log("Subscription modal dismissed by user");
-              setIsLoading(false);
-            }
-          }
-        };
-
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
+        console.log("Redirecting to Razorpay hosted checkout:", shortUrl);
+        
+        // For subscription payments, redirect to Razorpay's hosted page
+        // This is more reliable than the modal for subscriptions and handles mobile better
+        window.location.href = shortUrl;
       } else {
         // Subscription created successfully (trial period)
         onSuccess?.(subscription);
@@ -161,13 +138,20 @@ const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps
     }
   };
 
-  // Verify subscription payment
+  // Verify subscription payment with timeout
   const verifySubscriptionPayment = async (
     subscriptionId: string,
     paymentId: string,
     signature: string
   ) => {
     try {
+      console.log("Starting payment verification...");
+      setIsLoading(true);
+
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const verifyResponse = await fetch("/api/community-subscriptions/verify", {
         method: "POST",
         headers: {
@@ -179,7 +163,10 @@ const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps
           signature,
           communityId
         }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const verifyData = await verifyResponse.json();
 
@@ -203,16 +190,32 @@ const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps
       }
     } catch (error: any) {
       console.error("Subscription verification error:", error);
-      setError(error.message);
+
+      if (error.name === 'AbortError') {
+        setError("Payment verification is taking longer than expected. Please check your payment status in a few minutes.");
+      } else {
+        setError(error.message || "Payment verification failed");
+      }
+
       onError?.(error.message);
       setIsLoading(false); // Reset loading state on error
     }
   };
 
   return (
-    <div className={`community-subscription-checkout ${className}`}>
-      {/* Standardized Plan Information */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+    <>
+      <PaymentLoadingIndicator
+        isVisible={isLoading}
+        message="Processing your subscription payment..."
+        onTimeout={() => {
+          setError("Payment is taking longer than expected. Please check your payment status.");
+          setIsLoading(false);
+        }}
+      />
+
+      <div className={`community-subscription-checkout ${className}`}>
+        {/* Standardized Plan Information */}
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
         <h3 className="font-semibold text-lg text-gray-900 mb-2">Community Management Plan</h3>
         <p className="text-gray-600 text-sm mb-3">Complete community management solution with unlimited features</p>
         <div className="flex items-center justify-between">
@@ -322,7 +325,8 @@ const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps
       <p className="text-xs text-gray-500 text-center mt-3">
         Secure payment powered by Razorpay • Cancel anytime
       </p>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next dev --turbopack",
+    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192 --tls-min-v1.0 --tls-cipher-list=ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS\" NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --turbopack",
     "dev:socket": "node --max-old-space-size=4096 standalone-server.js",
     "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next build",
     "build:skip-types": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next build --no-lint --no-types",

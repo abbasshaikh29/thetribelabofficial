@@ -5,16 +5,7 @@ import { getPublicUrl } from "@/lib/r2";
 import https from "https";
 import crypto from "crypto";
 
-// Create a custom HTTPS agent with modern TLS settings
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: true,
-  secureProtocol: "TLS_method",
-  secureOptions: crypto.constants?.SSL_OP_NO_SSLv3 || 0,
-  ciphers:
-    "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384",
-});
-
-// Initialize R2 client
+// Initialize R2 client with default settings
 const r2Client = new S3Client({
   region: "auto", // R2 uses 'auto' for region
   endpoint: process.env.R2_ENDPOINT_URL || "", // Cloudflare R2 endpoint
@@ -22,11 +13,7 @@ const r2Client = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
   },
-  requestHandler: {
-    httpOptions: {
-      agent: httpsAgent,
-    },
-  },
+  // Use default Node.js HTTPS settings
 });
 
 const bucketName = process.env.R2_BUCKET_NAME || "";

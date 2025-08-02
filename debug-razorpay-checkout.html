@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Checkout Debug</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <h1>Razorpay Checkout Debug</h1>
+    <button id="rzp-button1">Pay with Razorpay</button>
+    <div id="debug-info"></div>
+
+    <script>
+        const debugInfo = document.getElementById('debug-info');
+        
+        function log(message) {
+            console.log(message);
+            debugInfo.innerHTML += '<p>' + message + '</p>';
+        }
+
+        // Check if Razorpay script loaded
+        if (typeof Razorpay !== 'undefined') {
+            log('✅ Razorpay script loaded successfully');
+        } else {
+            log('❌ Razorpay script failed to load');
+        }
+
+        document.getElementById('rzp-button1').onclick = function(e) {
+            log('🔄 Starting Razorpay checkout test...');
+            
+            const options = {
+                "key": "rzp_test_zTLjBZsEpohSfB", // Your Razorpay Key ID
+                "amount": 240000, // Amount in paise (₹2400)
+                "currency": "INR",
+                "name": "TheTribeLab Test",
+                "description": "Test Transaction",
+                "image": "https://thetribelab.vercel.app/favicon.ico",
+                "handler": function (response) {
+                    log('✅ Payment successful!');
+                    log('Payment ID: ' + response.razorpay_payment_id);
+                    log('Order ID: ' + response.razorpay_order_id);
+                    log('Signature: ' + response.razorpay_signature);
+                },
+                "prefill": {
+                    "name": "Test User",
+                    "email": "test@example.com",
+                    "contact": "9999999999"
+                },
+                "notes": {
+                    "address": "Test Address"
+                },
+                "theme": {
+                    "color": "#F37021"
+                },
+                "modal": {
+                    "ondismiss": function() {
+                        log('⚠️ Payment modal dismissed');
+                    }
+                }
+            };
+
+            try {
+                const rzp1 = new Razorpay(options);
+                log('✅ Razorpay instance created');
+                
+                rzp1.on('payment.failed', function (response) {
+                    log('❌ Payment failed');
+                    log('Error Code: ' + response.error.code);
+                    log('Error Description: ' + response.error.description);
+                    log('Error Source: ' + response.error.source);
+                    log('Error Step: ' + response.error.step);
+                    log('Error Reason: ' + response.error.reason);
+                    log('Order ID: ' + response.error.metadata.order_id);
+                    log('Payment ID: ' + response.error.metadata.payment_id);
+                });
+
+                rzp1.open();
+                log('🚀 Razorpay modal opened');
+            } catch (error) {
+                log('❌ Error creating Razorpay instance: ' + error.message);
+            }
+            
+            e.preventDefault();
+        }
+
+        // Additional debugging
+        log('Browser: ' + navigator.userAgent);
+        log('Current URL: ' + window.location.href);
+        log('Screen size: ' + screen.width + 'x' + screen.height);
+    </script>
+</body>
+</html>

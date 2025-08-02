@@ -171,7 +171,7 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
     }
   };
 
-  // Verify payment
+  // Verify payment with timeout
   const verifyPayment = async (
     subscriptionId: string,
     paymentId: string,
@@ -179,6 +179,11 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
   ) => {
     try {
       console.log("Verifying payment signature...");
+      setIsLoading(true);
+
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       const verifyResponse = await fetch("/api/community-subscriptions/verify", {
         method: "POST",
@@ -191,7 +196,10 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
           signature,
           communityId
         }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const verifyData = await verifyResponse.json();
 

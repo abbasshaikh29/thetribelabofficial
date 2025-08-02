@@ -1,7 +1,7 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/components/Notification";
 import Link from "next/link";
@@ -15,29 +15,58 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { showNotification } = useNotification();
+  const { data: session, status } = useSession();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      console.log("User already authenticated, redirecting...");
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl') || '/';
+      window.location.href = callbackUrl;
+    }
+  }, [session, status]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log("Attempting login with credentials:", { email, password });
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
 
-    if (result?.error) {
-      console.log(result);
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-      // Check if the error is related to email verification
-      if (result.error.includes("verify your email")) {
-        showNotification("Please verify your email before logging in", "error");
-        setShowVerificationForm(true);
+      console.log("Login result:", result);
+
+      if (result?.error) {
+        console.log("Login error:", result.error);
+
+        // Check if the error is related to email verification
+        if (result.error.includes("verify your email")) {
+          showNotification("Please verify your email before logging in", "error");
+          setShowVerificationForm(true);
+        } else {
+          showNotification(result.error, "error");
+        }
+      } else if (result?.ok) {
+        showNotification("Login successful!", "success");
+
+        // Get the callback URL from query params or default to home
+        const urlParams = new URLSearchParams(window.location.search);
+        const callbackUrl = urlParams.get('callbackUrl') || '/';
+
+        console.log("Redirecting to:", callbackUrl);
+
+        // Use window.location.href for a hard redirect to ensure session is properly loaded
+        window.location.href = callbackUrl;
       } else {
-        showNotification(result.error, "error");
+        showNotification("Login failed. Please try again.", "error");
       }
-    } else {
-      showNotification("Login successful!", "success");
-      router.push("/");
+    } catch (error) {
+      console.error("Login error:", error);
+      showNotification("An error occurred during login. Please try again.", "error");
     }
   };
 
@@ -63,7 +92,7 @@ export default function Login() {
             Sign in with Google
           </button>
 
-          <li className="divider my-1">or</li>
+          <div className="divider my-1">or</div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-control">
               <label className="label" htmlFor="email">

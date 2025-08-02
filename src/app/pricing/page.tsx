@@ -41,11 +41,11 @@ export default function PricingPage() {
                   </h3>
                   <div className="mb-6">
                     <span className="text-5xl font-bold" style={{ color: "var(--text-primary)" }}>
-                      $29
+                      ₹3000
                     </span>
                     <span style={{ color: "var(--text-secondary)" }}>/month</span>
                     <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
-                      Processed as ₹2,400 INR • Cancel anytime
+                      No contracts, no commitments. Cancel anytime
                     </p>
                     <div className="mt-4 px-4 py-3 rounded-lg text-sm font-medium" style={{ backgroundColor: "var(--brand-primary)", color: "white", opacity: 0.9 }}>
                       🎉 14-Day Free Trial Included • No Credit Card Required

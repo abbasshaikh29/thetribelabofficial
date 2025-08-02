@@ -248,6 +248,8 @@ export const CSP_DIRECTIVES = {
     "'unsafe-inline'", // Required for some components, consider removing in future
     "https://checkout.razorpay.com",
     "https://*.razorpay.com",
+    "https://www.google.com", // Google ReCaptcha
+    "https://www.gstatic.com", // Google static resources
   ],
   "style-src": ["'self'", "'unsafe-inline'"], // Required for styled components
   "img-src": ["'self'", "data:", "https:", "blob:"],
@@ -255,12 +257,14 @@ export const CSP_DIRECTIVES = {
   "connect-src": [
     "'self'",
     "https://*.razorpay.com",
+    "https://www.google.com", // Google ReCaptcha API
     "wss:",
     "ws:",
   ],
   "frame-src": [
     "https://checkout.razorpay.com",
     "https://*.razorpay.com",
+    "https://www.google.com", // Google ReCaptcha iframe
   ],
   "object-src": ["'none'"],
   "base-uri": ["'self'"],

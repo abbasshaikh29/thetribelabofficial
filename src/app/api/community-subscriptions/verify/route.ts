@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       paymentId: paymentId ? `${paymentId.substring(0, 15)}...` : "missing",
       hasSignature: !!signature,
       communityId,
-      userId: session.user.id
+      userId: session.user.id,
+      timestamp: new Date().toISOString()
     });
 
     if (!subscriptionId || !paymentId || !signature) {

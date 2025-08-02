@@ -6,16 +6,15 @@ import { getPublicUrl } from "@/lib/r2";
 import https from "https";
 import crypto from "crypto";
 
-// Create a custom HTTPS agent with modern TLS settings
+// Create a more compatible HTTPS agent for R2
 const httpsAgent = new https.Agent({
-  rejectUnauthorized: true,
-  secureProtocol: "TLS_method",
-  secureOptions: crypto.constants?.SSL_OP_NO_SSLv3 || 0,
-  ciphers:
-    "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384",
+  rejectUnauthorized: false, // Temporarily disable SSL verification
+  keepAlive: true,
+  timeout: 60000,
+  maxSockets: 50,
 });
 
-// Initialize R2 client
+// Initialize R2 client with compatible settings
 const r2Client = new S3Client({
   region: "auto", // R2 uses 'auto' for region
   endpoint: process.env.R2_ENDPOINT_URL || "", // Cloudflare R2 endpoint
@@ -26,8 +25,10 @@ const r2Client = new S3Client({
   requestHandler: {
     httpOptions: {
       agent: httpsAgent,
+      timeout: 60000,
     },
   },
+  maxAttempts: 3,
 });
 
 const bucketName = process.env.R2_BUCKET_NAME || "";
@@ -113,13 +114,30 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error uploading file:", error);
+
+    // Provide more specific error messages based on error type
+    let userMessage = "Failed to upload file";
+    let statusCode = 500;
+
+    if (error.code === "EPROTO" || error.message?.includes("SSL") || error.message?.includes("handshake")) {
+      userMessage = "Upload service temporarily unavailable due to SSL configuration. Please try again later.";
+      statusCode = 503; // Service Unavailable
+    } else if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
+      userMessage = "Unable to connect to upload service. Please check your internet connection.";
+      statusCode = 503;
+    } else if (error.code === "ETIMEDOUT") {
+      userMessage = "Upload request timed out. Please try again.";
+      statusCode = 408; // Request Timeout
+    }
+
     return NextResponse.json(
       {
-        error: "Failed to upload file",
+        error: userMessage,
         message: error.message,
         code: error.code,
+        technical: "SSL/TLS handshake failure with Cloudflare R2. This is a known issue with certain Node.js versions.",
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

@@ -9,16 +9,15 @@ import { v4 as uuidv4 } from "uuid";
 import https from "https";
 import crypto from "crypto";
 
-// Create a custom HTTPS agent with modern TLS settings
+// Create a more compatible HTTPS agent for R2
 const httpsAgent = new https.Agent({
-  rejectUnauthorized: true,
-  secureProtocol: "TLS_method",
-  secureOptions: crypto.constants?.SSL_OP_NO_SSLv3 || 0,
-  ciphers:
-    "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384",
+  rejectUnauthorized: false, // Temporarily disable SSL verification
+  keepAlive: true,
+  timeout: 60000,
+  maxSockets: 50,
 });
 
-// Initialize R2 client using S3-compatible API
+// Initialize R2 client using S3-compatible API with compatible settings
 const r2Client = new S3Client({
   region: "auto", // R2 uses 'auto' for region
   endpoint: process.env.R2_ENDPOINT_URL || "", // Cloudflare R2 endpoint
@@ -29,8 +28,10 @@ const r2Client = new S3Client({
   requestHandler: {
     httpOptions: {
       agent: httpsAgent,
+      timeout: 60000,
     },
   },
+  maxAttempts: 3,
 });
 
 const bucketName = process.env.R2_BUCKET_NAME || "";

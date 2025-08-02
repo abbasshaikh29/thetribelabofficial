@@ -92,6 +92,11 @@ export default function DirectFileUpload({
             const errorResponse = JSON.parse(xhr.responseText);
             errorMessage = errorResponse.error || errorMessage;
             console.error("Error details:", errorResponse);
+
+            // Provide more user-friendly error messages
+            if (errorResponse.message && errorResponse.message.includes("EPROTO")) {
+              errorMessage = "Upload service temporarily unavailable. Please try again later.";
+            }
           } catch (e) {
             console.error("Could not parse error response:", xhr.responseText);
           }
@@ -105,7 +110,7 @@ export default function DirectFileUpload({
       xhr.onerror = (e) => {
         console.error("Upload network error:", e);
         setUploading(false);
-        setError("Upload failed due to a network error");
+        setError("Upload failed due to a network error. The upload service may be temporarily unavailable.");
       };
 
       // Send the form data

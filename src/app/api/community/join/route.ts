@@ -105,7 +105,14 @@ export async function POST(req: Request) {
     const user = await User.findById(session.user.id, "username name email");
     const username = user?.username || user?.name || user?.email || "A user";
 
-    // Create notification for the admin
+    // Create notification for the admin ONLY
+    console.log("Creating join request notification for admin:", {
+      adminId: community.admin,
+      communityId: community._id,
+      requesterId: session.user.id,
+      username: username
+    });
+
     await Notification.create({
       userId: community.admin,
       type: "join-request",
@@ -118,6 +125,8 @@ export async function POST(req: Request) {
       read: false,
       createdBy: new mongoose.Types.ObjectId(session.user.id),
     });
+
+    console.log("Join request notification created successfully for admin only");
 
     return NextResponse.json({ message: "Join request sent successfully" });
   } catch (error) {

@@ -257,7 +257,7 @@ export const authOptions: NextAuthConfig = {
   },
   pages: {
     signIn: "/login",
-    error: "/login",
+    // Remove error redirect to login to prevent redirect loops
   },
   session: {
     strategy: "jwt",

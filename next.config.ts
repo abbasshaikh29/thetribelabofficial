@@ -113,7 +113,7 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
     contentSecurityPolicy:
-      "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com; frame-src https://checkout.razorpay.com https://*.razorpay.com; connect-src 'self' https://*.razorpay.com;",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com https://www.google.com https://www.gstatic.com; frame-src https://checkout.razorpay.com https://*.razorpay.com https://www.google.com; connect-src 'self' https://*.razorpay.com https://www.google.com;",
   },
   // Enable strict mode for better development experience
   reactStrictMode: true,
@@ -170,7 +170,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.razorpay.com wss: ws:; frame-src https://checkout.razorpay.com https://*.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.razorpay.com https://www.google.com wss: ws:; frame-src https://checkout.razorpay.com https://*.razorpay.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
           },
           // CORS headers (more restrictive)
           {

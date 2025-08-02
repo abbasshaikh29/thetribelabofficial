@@ -212,12 +212,12 @@ export const securityHeaders = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com",
+    "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com https://www.google.com https://www.gstatic.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.razorpay.com wss: ws:",
-    "frame-src https://checkout.razorpay.com https://*.razorpay.com",
+    "connect-src 'self' https://*.razorpay.com https://www.google.com wss: ws:",
+    "frame-src https://checkout.razorpay.com https://*.razorpay.com https://www.google.com",
     "object-src 'none'",
     "base-uri 'self'"
   ].join('; ')

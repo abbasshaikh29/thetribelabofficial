@@ -196,6 +196,12 @@ export async function POST(request: NextRequest) {
       quantity: 1,
       total_count: 120, // 120 monthly payments (10 years)
       customer_notify: customerNotify,
+      notes: {
+        ...notes,
+        communityId: community?._id?.toString() || "new",
+        adminEmail: adminUser.email,
+        planName: "Community Management Plan"
+      }
     };
 
     console.log("Creating Razorpay subscription with data:", subscriptionData);

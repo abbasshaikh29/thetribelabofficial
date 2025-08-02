@@ -37,6 +37,21 @@ export async function POST(request: NextRequest) {
       currentUser: session.user.id,
     });
 
+    // Special check for join-request type notifications
+    if (type === "join-request") {
+      console.log("WARNING: join-request notification being created via bulk API - this should not happen!");
+      console.log("Join request notifications should be created directly in the join API");
+
+      // Prevent join-request notifications from being sent to all members
+      if (!targetUserId) {
+        console.log("BLOCKING: join-request notification without targetUserId - would spam all members");
+        return NextResponse.json(
+          { error: "join-request notifications must specify a targetUserId" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Validate required fields
     if (
       !type ||

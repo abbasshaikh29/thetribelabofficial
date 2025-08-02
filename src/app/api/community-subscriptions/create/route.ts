@@ -129,8 +129,46 @@ export async function POST(request: NextRequest) {
         },
       };
 
-      const razorpayCustomer = await createCustomer(customerData);
-      customerId = razorpayCustomer.id;
+      try {
+        const razorpayCustomer = await createCustomer(customerData);
+        customerId = razorpayCustomer.id;
+      } catch (error: any) {
+        // Handle the case where customer already exists
+        if (error.message && error.message.includes("Customer already exists")) {
+          console.log(`Customer already exists for email: ${adminUser.email}`);
+          
+          // Fetch the existing customer by email
+          // We need to search for customers by email
+          try {
+            const response = await fetch(`https://api.razorpay.com/v1/customers?email=${encodeURIComponent(adminUser.email)}`, {
+              method: "GET",
+              headers: {
+                Authorization: `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64")}`,
+                "Content-Type": "application/json",
+              },
+            });
+            
+            if (response.ok) {
+              const customersData = await response.json();
+              if (customersData.items && customersData.items.length > 0) {
+                // Use the first matching customer
+                customerId = customersData.items[0].id;
+                console.log(`Using existing customer: ${customerId}`);
+              } else {
+                throw new Error("Customer exists but could not be found in search results");
+              }
+            } else {
+              throw new Error("Failed to search for existing customer");
+            }
+          } catch (searchError) {
+            console.error("Error searching for existing customer:", searchError);
+            throw new Error("Customer already exists but could not be retrieved. Please contact support.");
+          }
+        } else {
+          // Re-throw other errors
+          throw error;
+        }
+      }
 
       // Update user with customer ID
       await User.findByIdAndUpdate(adminId, {

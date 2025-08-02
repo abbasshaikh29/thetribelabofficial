@@ -3,7 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { NotificationProvider } from "./Notification";
 import { RealtimeProvider } from "./RealtimeProvider";
-import { CaptchaProvider } from "@/contexts/CaptchaContext";
+
 import SettingsModalProvider from "./modals/SettingsModalProvider";
 import { useState, useEffect } from "react";
 
@@ -33,8 +33,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       refetchWhenOffline={false}
     >
       <NotificationProvider>
-        <CaptchaProvider>
-          <RealtimeProvider>
+        <RealtimeProvider>
             <SettingsModalProvider>
               {children}
               {!storageConfig.configured && (
@@ -49,7 +48,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
               )}
             </SettingsModalProvider>
           </RealtimeProvider>
-        </CaptchaProvider>
       </NotificationProvider>
     </SessionProvider>
   );

@@ -163,6 +163,8 @@ const communitySubscriptionSchema = new Schema<ICommunitySubscription>(
 communitySubscriptionSchema.index({ adminId: 1, status: 1 });
 communitySubscriptionSchema.index({ chargeAt: 1, status: 1 });
 communitySubscriptionSchema.index({ nextRetryAt: 1, status: 1 });
+// Add critical compound index for payment verification (razorpaySubscriptionId already has unique index)
+communitySubscriptionSchema.index({ razorpaySubscriptionId: 1, adminId: 1 });
 
 export const CommunitySubscription = models.CommunitySubscription || model<ICommunitySubscription>("CommunitySubscription", communitySubscriptionSchema);
 

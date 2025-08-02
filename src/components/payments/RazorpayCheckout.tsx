@@ -138,68 +138,89 @@ const CommunitySubscriptionCheckout: React.FC<CommunitySubscriptionCheckoutProps
     }
   };
 
-  // Verify subscription payment with timeout
+  // Verify subscription payment with optimized timeout and retry logic
   const verifySubscriptionPayment = async (
     subscriptionId: string,
     paymentId: string,
     signature: string
   ) => {
-    try {
-      console.log("Starting payment verification...");
-      setIsLoading(true);
+    const maxRetries = 2;
+    let retryCount = 0;
 
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const attemptVerification = async (): Promise<void> => {
+      try {
+        console.log(`Starting payment verification... (attempt ${retryCount + 1}/${maxRetries + 1})`);
+        setIsLoading(true);
 
-      const verifyResponse = await fetch("/api/community-subscriptions/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subscriptionId,
-          paymentId,
-          signature,
-          communityId
-        }),
-        signal: controller.signal
-      });
+        // Progressive timeout: start with 15s, then 30s, then 45s
+        const timeoutMs = 15000 + (retryCount * 15000);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      clearTimeout(timeoutId);
+        const verifyResponse = await fetch("/api/community-subscriptions/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            subscriptionId,
+            paymentId,
+            signature,
+            communityId
+          }),
+          signal: controller.signal
+        });
 
-      const verifyData = await verifyResponse.json();
+        clearTimeout(timeoutId);
 
-      if (verifyResponse.ok) {
-        // Reset loading state before calling success callback
-        setIsLoading(false);
+        const verifyData = await verifyResponse.json();
 
-        onSuccess?.(verifyData.subscription);
+        if (verifyResponse.ok) {
+          console.log(`Payment verification successful in ${verifyData.processingTime || 'unknown'}ms`);
 
-        // Redirect to community slug URL as requested
-        if (communitySlug) {
-          router.push(`/Newcompage/${communitySlug}?subscription=success`);
-        } else if (communityId) {
-          // Fallback: try using communityId as slug (in case it's already a slug)
-          router.push(`/Newcompage/${communityId}?subscription=success`);
+          // Reset loading state before calling success callback
+          setIsLoading(false);
+
+          onSuccess?.(verifyData.subscription);
+
+          // Redirect to community slug URL as requested
+          if (communitySlug) {
+            router.push(`/Newcompage/${communitySlug}?subscription=success`);
+          } else if (communityId) {
+            // Fallback: try using communityId as slug (in case it's already a slug)
+            router.push(`/Newcompage/${communityId}?subscription=success`);
+          } else {
+            router.push(`/admin/communities?subscription=success`);
+          }
         } else {
-          router.push(`/admin/communities?subscription=success`);
+          throw new Error(verifyData.error || "Subscription verification failed");
         }
-      } else {
-        throw new Error(verifyData.error || "Subscription verification failed");
-      }
-    } catch (error: any) {
-      console.error("Subscription verification error:", error);
+      } catch (error: any) {
+        console.error(`Subscription verification error (attempt ${retryCount + 1}):`, error);
 
-      if (error.name === 'AbortError') {
-        setError("Payment verification is taking longer than expected. Please check your payment status in a few minutes.");
-      } else {
-        setError(error.message || "Payment verification failed");
-      }
+        if (error.name === 'AbortError' && retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Retrying payment verification... (${retryCount}/${maxRetries})`);
+          setError(`Verification timeout. Retrying... (${retryCount}/${maxRetries})`);
 
-      onError?.(error.message);
-      setIsLoading(false); // Reset loading state on error
-    }
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptVerification();
+        }
+
+        // Final error handling
+        if (error.name === 'AbortError') {
+          setError("Payment verification is taking longer than expected. Your payment may still be processing. Please check your subscription status in a few minutes or contact support.");
+        } else {
+          setError(error.message || "Payment verification failed");
+        }
+
+        onError?.(error.message);
+        setIsLoading(false);
+      }
+    };
+
+    return attemptVerification();
   };
 
   return (

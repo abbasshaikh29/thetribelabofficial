@@ -13,7 +13,7 @@ export default function PaymentLoadingIndicator({
   isVisible,
   message = "Processing your payment...",
   onTimeout,
-  timeoutMs = 30000 // 30 seconds default
+  timeoutMs = 45000 // Increased to 45 seconds to match new retry logic
 }: PaymentLoadingIndicatorProps) {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
@@ -75,15 +75,20 @@ export default function PaymentLoadingIndicator({
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             <span className="text-sm">Payment initiated</span>
           </div>
-          
+
           <div className="flex items-center justify-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${timeElapsed > 5000 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-            <span className="text-sm">Verifying payment</span>
+            <div className={`w-3 h-3 rounded-full ${timeElapsed > 3000 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className="text-sm">Verifying signature</span>
           </div>
-          
+
           <div className="flex items-center justify-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${timeElapsed > 10000 ? 'bg-yellow-500 animate-pulse' : 'bg-gray-300'}`}></div>
-            <span className="text-sm">Processing subscription</span>
+            <div className={`w-3 h-3 rounded-full ${timeElapsed > 8000 ? 'bg-green-500' : timeElapsed > 3000 ? 'bg-yellow-500 animate-pulse' : 'bg-gray-300'}`}></div>
+            <span className="text-sm">Updating subscription</span>
+          </div>
+
+          <div className="flex items-center justify-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${timeElapsed > 15000 ? 'bg-yellow-500 animate-pulse' : 'bg-gray-300'}`}></div>
+            <span className="text-sm">Finalizing setup</span>
           </div>
         </div>
         
@@ -91,16 +96,17 @@ export default function PaymentLoadingIndicator({
         {showTimeoutWarning && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-yellow-800">
-              ⚠️ Payment is taking longer than usual. This may be due to high server load.
+              ⚠️ Payment verification is taking longer than usual. We're automatically retrying to ensure your payment is processed correctly.
               Please don't close this window.
             </p>
           </div>
         )}
-        
+
         {/* Tips */}
         <div className="text-xs text-gray-500 space-y-1">
           <p>• Please don't refresh or close this page</p>
           <p>• Your payment is being processed securely</p>
+          <p>• We'll automatically retry if there are any delays</p>
           <p>• You'll be redirected automatically when complete</p>
         </div>
       </div>

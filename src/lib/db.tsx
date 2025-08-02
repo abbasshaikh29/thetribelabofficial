@@ -48,13 +48,15 @@ export async function dbconnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false, // Disable mongoose buffering
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 10000, // Reduced from 30 seconds
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000, // Reduced from 30 seconds
-      maxIdleTimeMS: 30000,
+      maxPoolSize: 15, // Increased pool size for better concurrency
+      minPoolSize: 2, // Maintain minimum connections
+      serverSelectionTimeoutMS: 8000, // Faster server selection
+      socketTimeoutMS: 30000, // Reduced socket timeout
+      connectTimeoutMS: 8000, // Faster connection timeout
+      maxIdleTimeMS: 20000, // Reduced idle time
       retryWrites: true,
       authSource: "admin", // Specify auth source
+      heartbeatFrequencyMS: 10000, // More frequent heartbeats
       // Removed deprecated options: useNewUrlParser, useUnifiedTopology
     };
 

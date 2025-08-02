@@ -171,60 +171,85 @@ const SimplePaymentButton: React.FC<SimplePaymentButtonProps> = ({
     }
   };
 
-  // Verify payment with timeout
+  // Verify payment with optimized timeout and retry logic
   const verifyPayment = async (
     subscriptionId: string,
     paymentId: string,
     signature: string
   ) => {
-    try {
-      console.log("Verifying payment signature...");
-      setIsLoading(true);
+    const maxRetries = 2;
+    let retryCount = 0;
 
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const attemptVerification = async (): Promise<void> => {
+      try {
+        console.log(`Verifying payment signature... (attempt ${retryCount + 1}/${maxRetries + 1})`);
+        setIsLoading(true);
 
-      const verifyResponse = await fetch("/api/community-subscriptions/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subscriptionId,
-          paymentId,
-          signature,
-          communityId
-        }),
-        signal: controller.signal
-      });
+        // Progressive timeout: start with 15s, then 30s, then 45s
+        const timeoutMs = 15000 + (retryCount * 15000);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      clearTimeout(timeoutId);
+        const verifyResponse = await fetch("/api/community-subscriptions/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            subscriptionId,
+            paymentId,
+            signature,
+            communityId
+          }),
+          signal: controller.signal
+        });
 
-      const verifyData = await verifyResponse.json();
+        clearTimeout(timeoutId);
 
-      console.log(`Verification ${verifyResponse.ok ? 'successful' : 'failed'}`);
+        const verifyData = await verifyResponse.json();
 
-      if (verifyResponse.ok) {
-        setIsLoading(false);
-        onSuccess?.(verifyData.subscription);
+        console.log(`Verification ${verifyResponse.ok ? 'successful' : 'failed'} in ${verifyData.processingTime || 'unknown'}ms`);
 
-        // Redirect to community slug URL
-        if (communitySlug) {
-          router.push(`/Newcompage/${communitySlug}?subscription=success`);
-        } else if (communityId) {
-          router.push(`/Newcompage/${communityId}?subscription=success`);
+        if (verifyResponse.ok) {
+          setIsLoading(false);
+          onSuccess?.(verifyData.subscription);
+
+          // Redirect to community slug URL
+          if (communitySlug) {
+            router.push(`/Newcompage/${communitySlug}?subscription=success`);
+          } else if (communityId) {
+            router.push(`/Newcompage/${communityId}?subscription=success`);
+          }
+        } else {
+          console.error("Verification failed:", verifyData);
+          throw new Error(verifyData.error || "Payment verification failed");
         }
-      } else {
-        console.error("Verification failed:", verifyData);
-        throw new Error(verifyData.error || "Payment verification failed");
+      } catch (error: any) {
+        console.error(`Payment verification error (attempt ${retryCount + 1}):`, error);
+
+        if (error.name === 'AbortError' && retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Retrying payment verification... (${retryCount}/${maxRetries})`);
+          setError(`Verification timeout. Retrying... (${retryCount}/${maxRetries})`);
+
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptVerification();
+        }
+
+        // Final error handling
+        if (error.name === 'AbortError') {
+          setError("Payment verification is taking longer than expected. Your payment may still be processing. Please check your subscription status in a few minutes.");
+        } else {
+          setError(error.message || "Payment verification failed");
+        }
+
+        onError?.(error.message);
+        setIsLoading(false);
       }
-    } catch (error: any) {
-      console.error("Payment verification error:", error);
-      setError(error.message);
-      onError?.(error.message);
-      setIsLoading(false);
-    }
+    };
+
+    return attemptVerification();
   };
 
   return (

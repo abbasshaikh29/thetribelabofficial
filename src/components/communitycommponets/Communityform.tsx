@@ -8,8 +8,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import mongoose from "mongoose";
-import CaptchaVerificationWrapper from "../captcha/CaptchaVerificationWrapper";
-import { useCaptcha } from "@/contexts/CaptchaContext";
+
 
 interface CommunityFormData {
   name: string;
@@ -25,10 +24,7 @@ interface CommunityFormData {
 export default function CommunityCreateForm() {
   const [loading, setLoading] = useState(false);
   const [CreateProgress, setCreateProgress] = useState(0);
-  const [showCaptcha, setShowCaptcha] = useState(false);
-  const [formData, setFormData] = useState<CommunityFormData | null>(null);
   const { showNotification } = useNotification();
-  const { isCaptchaVerified, setIsCaptchaVerified } = useCaptcha();
 
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -87,63 +83,23 @@ export default function CommunityCreateForm() {
         return;
       }
 
-      // Store form data with user info and show CAPTCHA
-      setFormData({
+      // Create community directly without CAPTCHA
+      setLoading(true);
+
+      const communityData = {
         ...data,
         name: data.name.trim(),
         description: data.description?.trim(),
-        createdBy: session.user.id,
-        admin: session.user.id,
-        adminQuestions: [
-          "Why do you want to join this community?",
-          "What can you contribute to this community?",
-          "How did you hear about us?",
-        ],
-      });
-      setShowCaptcha(true);
-    } catch (error) {
-      console.error('Error in form submission:', error);
-      showNotification("An error occurred. Please try again.", "error");
-      if (!session?.user?.id) {
-        const callbackUrl = window ? encodeURIComponent(window.location.pathname) : '';
-        router.push(`/api/auth/signin${callbackUrl ? `?callbackUrl=${callbackUrl}` : ''}`);
-      }
-    }
-  };
-
-  const handleCaptchaComplete = async (captchaFormData: CommunityFormData | null = formData) => {
-    setLoading(true);
-    
-    try {
-      console.log('handleCaptchaComplete called with:', { captchaFormData, formData, session });
-      
-      // Ensure we have all required data
-      if (!session?.user?.id) {
-        throw new Error('No active user session found');
-      }
-      
-      const dataToUse = captchaFormData || formData;
-      if (!dataToUse) {
-        throw new Error('Form data is missing');
-      }
-      
-      // Validate required fields
-      if (!dataToUse.name?.trim()) {
-        throw new Error('Community name is required');
-      }
-      
-      if (!dataToUse.description?.trim()) {
-        throw new Error('Community description is required');
-      }
-
-      // If we get here, all validations passed
-      const communityData = {
-        ...dataToUse,
         createdAt: new Date(),
         createdBy: session.user.id,
         admin: session.user.id,
         members: [session.user.id],
         joinRequests: [],
+        adminQuestions: [
+          "Why do you want to join this community?",
+          "What can you contribute to this community?",
+          "How did you hear about us?",
+        ],
       };
 
       const createdCommunity = await apiClient.createCommunity(communityData);
@@ -160,22 +116,25 @@ export default function CommunityCreateForm() {
       setValue("description", "");
       setValue("createdAt", undefined);
       setCreateProgress(0);
-      setShowCaptcha(false);
-      setFormData(null);
-      setIsCaptchaVerified(false);
     } catch (error) {
-      console.error('Error in community creation process:', error);
+      console.error('Error in form submission:', error);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       showNotification(errorMessage, "error");
+      if (!session?.user?.id) {
+        const callbackUrl = window ? encodeURIComponent(window.location.pathname) : '';
+        router.push(`/api/auth/signin${callbackUrl ? `?callbackUrl=${callbackUrl}` : ''}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+
+
   return (
     <div className="flex flex-col lg:flex-row gap-8 lg:gap-20 items-center justify-center min-h-screen py-4 px-4 sm:px-6">
       <div className="w-full lg:w-96 text-xl sm:text-2xl font-bold mb-4 max-w-md">
-        <Link href={"/"}>SKOOL</Link>
+        <Link href={"/"}>THETRIBELAB</Link>
         <h1 className="text-lg sm:text-2xl mt-2">
           Everything you need to build community and make money online.
         </h1>
@@ -190,25 +149,7 @@ export default function CommunityCreateForm() {
         </div>
       </div>
 
-      {showCaptcha ? (
-        <div className="card w-full max-w-md shadow-lg">
-          <CaptchaVerificationWrapper
-            onVerificationComplete={handleCaptchaComplete}
-            formData={formData || undefined}
-            title="Human Verification Required"
-            description="Please verify that you are human before creating a community"
-          >
-            <div className="p-6 text-center">
-              <h2 className="text-xl font-bold mb-4">Verification Complete!</h2>
-              <p className="mb-4">Creating your community...</p>
-              <div className="flex justify-center">
-                <Loader2 className="w-8 h-8 animate-spin" />
-              </div>
-            </div>
-          </CaptchaVerificationWrapper>
-        </div>
-      ) : (
-        <div className="card w-full max-w-md shadow-lg">
+      <div className="card w-full max-w-md shadow-lg">
           <div className="card-body border-2 border-gray-500 gap-4 sm:gap-6 p-6 sm:p-8 md:p-12 shadow-xl bg-inherit rounded-md">
             <h1 className="text-xl sm:text-2xl font-bold text-center">
               Create your Community
@@ -268,7 +209,6 @@ export default function CommunityCreateForm() {
             </form>
           </div>
         </div>
-      )}
     </div>
   );
 }
